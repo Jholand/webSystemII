@@ -6,6 +6,33 @@ const AdminDashboard = () => {
   const [showUserModal, setShowUserModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
 
+  const handleExport = () => {
+    // Create CSV content
+    const csvData = [
+      ['Dashboard Statistics Report', '', '', '', ''],
+      ['Generated:', new Date().toLocaleString(), '', '', ''],
+      ['', '', '', '', ''],
+      ['Metric', 'Value', 'Change', '', ''],
+      ...stats.map(stat => [stat.title, stat.value, stat.change, '', '']),
+      ['', '', '', '', ''],
+      ['Monthly Data', '', '', '', ''],
+      ['Month', 'Members', 'Births', 'Marriages', 'Donations'],
+      ...monthlyData.map(d => [d.month, d.members, d.births, d.marriages, d.donations])
+    ];
+
+    const csvContent = csvData.map(row => row.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `dashboard_report_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // Mock data for charts
   const monthlyData = [
     { month: 'Jan', members: 1050, births: 38, marriages: 12, donations: 45000, events: 8, attendance: 850, billings: 28000 },
@@ -128,11 +155,17 @@ const AdminDashboard = () => {
             <p className="text-gray-600 text-sm mt-1">System overview and management</p>
           </div>
           <div className="flex gap-2">
-            <button className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:shadow transition-all">
+            <button 
+              onClick={() => window.location.href = '/admin/settings'}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:shadow transition-all"
+            >
               <Settings size={16} className="inline mr-1.5" />
               Settings
             </button>
-            <button className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-black via-[#0A1628] to-[#1E3A8A] rounded-lg hover:opacity-90 transition-all">
+            <button 
+              onClick={handleExport}
+              className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-black via-[#0A1628] to-[#1E3A8A] rounded-lg hover:opacity-90 transition-all"
+            >
               <Download size={16} className="inline mr-1.5" />
               Export
             </button>

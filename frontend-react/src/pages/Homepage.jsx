@@ -96,7 +96,7 @@ const Homepage = ({ onLogin }) => {
             <div className="flex items-center gap-3">
               <Church className="h-8 w-8 text-white drop-shadow-lg" />
               <div>
-                <h1 className="text-xl font-bold text-white drop-shadow-lg">Dalapian Church</h1>
+                <h1 className="text-xl font-bold text-white drop-shadow-lg">Our Lady of Peace and Good Voyage Mission Area</h1>
                 <p className="text-xs text-white/80 drop-shadow-md">Est. 1952</p>
               </div>
             </div>
@@ -336,9 +336,8 @@ const Homepage = ({ onLogin }) => {
                   <Church size={40} className="text-blue-500" />
                 </div>
                 <h1 className="text-3xl font-bold text-white mb-2 drop-shadow-lg">
-                  Dalapian Church
+                  Our Lady of Peace and Good Voyage Mission Area
                 </h1>
-                <p className="text-blue-50/90 drop-shadow-md">Management System</p>
               </div>
             </div>
 

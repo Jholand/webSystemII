@@ -99,7 +99,7 @@ const Sidebar = ({ userRole, onLogout }) => {
               </div>
               <div>
                 <h2 className="text-xl font-bold text-white drop-shadow-lg tracking-wide">
-                  Church Records
+                  OLPGVMA
                 </h2>
                 <p className="text-xs font-semibold text-blue-300 capitalize mt-0.5">
                   {userRole?.replace('_', ' ')} Portal
@@ -228,7 +228,7 @@ const Sidebar = ({ userRole, onLogout }) => {
             {/* Copyright */}
             <div className="pt-2">
               <p className="text-xs text-blue-300/80 text-center font-medium">
-                © {new Date().getFullYear()} Church Records
+                © {new Date().getFullYear()} OLPGVMA
               </p>
             </div>
           </>

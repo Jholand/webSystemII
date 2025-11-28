@@ -88,7 +88,7 @@ const BillingModule = () => {
       client: '',
       service: '',
       amount: '',
-      date: '',
+      date: new Date().toISOString().split('T')[0],
       dueDate: '',
       notes: '',
     });
@@ -196,7 +196,7 @@ const BillingModule = () => {
             <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">Manage invoices and payments</p>
           </div>
           <button
-            onClick={() => setShowInvoiceModal(true)}
+            onClick={handleAddInvoice}
             className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all font-semibold shadow-lg hover:shadow-blue-500/50"
           >
             <Plus size={20} />

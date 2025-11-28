@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, Clock, MapPin, Users, Edit, Trash2, User, X } from 'lucide-react';
 import ModalOverlay from '../../components/ModalOverlay';
+import { priestService, scheduleService } from '../../services/churchService';
 
 const CalendarSchedule = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
   const [showEventModal, setShowEventModal] = useState(false);
+  const [priestsList, setPriestsList] = useState([]);
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (showEventModal) {
@@ -20,32 +24,78 @@ const CalendarSchedule = () => {
       if (sidebar) sidebar.style.display = '';
     }
   }, [showEventModal]);
+
+  useEffect(() => {
+    fetchPriests();
+    fetchSchedules();
+  }, []);
+
+  useEffect(() => {
+    fetchSchedules();
+  }, [currentDate]);
+
+  const fetchPriests = async () => {
+    try {
+      const response = await priestService.getAll();
+      setPriestsList(response.data || []);
+    } catch (err) {
+      console.error('Error fetching priests:', err);
+    }
+  };
+
+  const fetchSchedules = async () => {
+    try {
+      setLoading(true);
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      const startDate = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+      const lastDay = new Date(year, month + 1, 0).getDate();
+      const endDate = `${year}-${String(month + 1).padStart(2, '0')}-${lastDay}`;
+      
+      const response = await scheduleService.getAll({ 
+        start_date: startDate, 
+        end_date: endDate 
+      });
+      
+      const transformedEvents = (response.data || []).map(schedule => ({
+        id: schedule.id,
+        title: schedule.title,
+        date: schedule.date,
+        time: schedule.time,
+        endTime: schedule.end_time,
+        type: schedule.type,
+        location: schedule.location || '',
+        priest: schedule.priest ? schedule.priest.name : '',
+        priest_id: schedule.priest_id,
+        attendees: schedule.attendees || 0,
+        description: schedule.description || ''
+      }));
+      
+      setEvents(transformedEvents);
+    } catch (err) {
+      console.error('Error fetching schedules:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const [modalMode, setModalMode] = useState('add');
+  const [selectedEvent, setSelectedEvent] = useState(null);
   const [formData, setFormData] = useState({
     title: '',
     type: '',
     date: '',
     time: '',
-    endTime: '',
+    end_time: '',
     location: '',
-    priest: '',
+    priest_id: '',
     description: ''
   });
 
-  const events = [
-    { id: 1, title: 'Morning Mass', type: 'Mass', date: '2025-11-23', time: '6:00 AM', endTime: '7:00 AM', location: 'Main Church', priest: 'Fr. Joseph Smith', attendees: 150 },
-    { id: 2, title: 'Wedding Ceremony', type: 'Wedding', date: '2025-11-23', time: '2:00 PM', endTime: '4:00 PM', location: 'Main Church', priest: 'Fr. Michael Brown', attendees: 200 },
-    { id: 3, title: 'Evening Mass', type: 'Mass', date: '2025-11-23', time: '6:00 PM', endTime: '7:00 PM', location: 'Main Church', priest: 'Fr. Joseph Smith', attendees: 180 },
-    { id: 4, title: 'Youth Ministry Meeting', type: 'Ministry', date: '2025-11-24', time: '4:00 PM', endTime: '6:00 PM', location: 'Parish Hall', priest: '', attendees: 45 },
-    { id: 5, title: 'Baptism Ceremony', type: 'Baptism', date: '2025-11-24', time: '10:00 AM', endTime: '11:30 AM', location: 'Baptistry', priest: 'Fr. David Martinez', attendees: 30 },
-    { id: 6, title: 'Choir Practice', type: 'Ministry', date: '2025-11-25', time: '5:00 PM', endTime: '7:00 PM', location: 'Music Room', priest: '', attendees: 25 },
-    { id: 7, title: 'Bible Study', type: 'Ministry', date: '2025-11-26', time: '7:00 PM', endTime: '9:00 PM', location: 'Meeting Room', priest: '', attendees: 35 },
-    { id: 8, title: 'Sunday Mass', type: 'Mass', date: '2025-11-30', time: '8:00 AM', endTime: '9:30 AM', location: 'Main Church', priest: 'Fr. Joseph Smith', attendees: 500 },
-  ];
+
 
   const eventTypes = ['Mass', 'Wedding', 'Baptism', 'Funeral', 'Ministry', 'Conference', 'Retreat', 'Other'];
   const locations = ['Main Church', 'Chapel', 'Parish Hall', 'Baptistry', 'Meeting Room', 'Music Room', 'Outdoor Garden'];
-  const priests = ['Fr. Joseph Smith', 'Fr. Michael Brown', 'Fr. David Martinez'];
 
   const getDaysInMonth = (date) => {
     const year = date.getFullYear();
@@ -82,26 +132,62 @@ const CalendarSchedule = () => {
   const handleOpenModal = (mode, event = null) => {
     setModalMode(mode);
     if (event) {
-      setFormData(event);
+      setSelectedEvent(event);
+      setFormData({
+        title: event.title,
+        type: event.type,
+        date: event.date,
+        time: event.time,
+        end_time: event.endTime,
+        location: event.location || '',
+        priest_id: event.priest_id || '',
+        description: event.description || ''
+      });
     } else {
+      setSelectedEvent(null);
       setFormData({
         title: '',
         type: '',
         date: selectedDate || '',
         time: '',
-        endTime: '',
+        end_time: '',
         location: '',
-        priest: '',
+        priest_id: '',
         description: ''
       });
     }
     setShowEventModal(true);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Form submitted:', formData);
-    setShowEventModal(false);
+    try {
+      setLoading(true);
+      if (modalMode === 'add') {
+        await scheduleService.create(formData);
+      } else {
+        await scheduleService.update(selectedEvent.id, formData);
+      }
+      setShowEventModal(false);
+      fetchSchedules();
+    } catch (err) {
+      console.error('Error saving schedule:', err);
+      alert('Failed to save event: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteEvent = async (eventId) => {
+    if (window.confirm('Are you sure you want to delete this event?')) {
+      try {
+        await scheduleService.delete(eventId);
+        fetchSchedules();
+      } catch (err) {
+        console.error('Error deleting schedule:', err);
+        alert('Failed to delete event');
+      }
+    }
   };
 
   const getEventTypeColor = (type) => {
@@ -249,7 +335,10 @@ const CalendarSchedule = () => {
                           >
                             <Edit size={14} />
                           </button>
-                          <button className="p-1.5 text-rose-600 hover:bg-rose-100 rounded">
+                          <button 
+                            onClick={() => handleDeleteEvent(event.id)}
+                            className="p-1.5 text-rose-600 hover:bg-rose-100 rounded"
+                          >
                             <Trash2 size={14} />
                           </button>
                         </div>
@@ -387,8 +476,8 @@ const CalendarSchedule = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">End Time *</label>
                   <input
                     type="time"
-                    value={formData.endTime}
-                    onChange={(e) => setFormData({...formData, endTime: e.target.value})}
+                    value={formData.end_time}
+                    onChange={(e) => setFormData({...formData, end_time: e.target.value})}
                     className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   />
@@ -397,13 +486,13 @@ const CalendarSchedule = () => {
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Assign Priest (Optional)</label>
                   <select
-                    value={formData.priest}
-                    onChange={(e) => setFormData({...formData, priest: e.target.value})}
+                    value={formData.priest_id}
+                    onChange={(e) => setFormData({...formData, priest_id: e.target.value})}
                     className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">No priest assigned</option>
-                    {priests.map(priest => (
-                      <option key={priest} value={priest}>{priest}</option>
+                    {priestsList.filter(p => p.status === 'Active' || p.status === 'active').map(priest => (
+                      <option key={priest.id} value={priest.id}>{priest.name}</option>
                     ))}
                   </select>
                 </div>
@@ -424,14 +513,16 @@ const CalendarSchedule = () => {
                   type="button"
                   onClick={() => setShowEventModal(false)}
                   className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                  disabled={loading}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-gradient-to-br from-black via-[#0A1628] to-[#1E3A8A] text-white rounded-lg hover:from-[#1E3A8A] hover:to-blue-700 transition-all shadow-lg hover:shadow-blue-900/50"
+                  className="px-6 py-2 bg-gradient-to-br from-black via-[#0A1628] to-[#1E3A8A] text-white rounded-lg hover:from-[#1E3A8A] hover:to-blue-700 transition-all shadow-lg hover:shadow-blue-900/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={loading}
                 >
-                  {modalMode === 'add' ? 'Create Event' : 'Save Changes'}
+                  {loading ? 'Saving...' : (modalMode === 'add' ? 'Create Event' : 'Save Changes')}
                 </button>
               </div>
             </form>

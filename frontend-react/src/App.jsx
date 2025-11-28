@@ -37,17 +37,25 @@ import RequestService from './pages/user/RequestService';
 import PaymentsBilling from './pages/user/PaymentsBilling';
 
 function App() {
-  const [userRole, setUserRole] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userRole, setUserRole] = useState(() => {
+    return localStorage.getItem('userRole') || null;
+  });
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return localStorage.getItem('isAuthenticated') === 'true';
+  });
 
   const handleLogin = (role) => {
     setUserRole(role);
     setIsAuthenticated(true);
+    localStorage.setItem('userRole', role);
+    localStorage.setItem('isAuthenticated', 'true');
   };
 
   const handleLogout = () => {
     setUserRole(null);
     setIsAuthenticated(false);
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('isAuthenticated');
   };
 
   return (
