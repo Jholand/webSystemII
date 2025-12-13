@@ -1,0 +1,1334 @@
+================================================================================
+                    CHURCH MANAGEMENT SYSTEM - DATABASE SCHEMA
+================================================================================
+Generated: December 2, 2025
+System: Record - Church Management System
+Framework: Laravel (Backend) + React (Frontend)
+
+================================================================================
+                            TABLE OF CONTENTS
+================================================================================
+1. Core Authentication & User Management
+2. Church Membership & Personnel
+3. Sacraments & Religious Records
+4. Financial Management
+5. Events & Scheduling
+6. Service Requests & Applications
+7. Documents & File Management
+8. Communications & Notifications
+9. Administrative & System Tables
+
+================================================================================
+1. CORE AUTHENTICATION & USER MANAGEMENT
+================================================================================
+
+TABLE: users
+Description: System users table for authentication (Laravel default)
+--------------------------------------------------------------------------------
+Field                   Type            Constraints             Description
+--------------------------------------------------------------------------------
+id                      BIGINT          PRIMARY KEY, AUTO_INC   User ID
+name                    VARCHAR(255)    NOT NULL                Full name
+email                   VARCHAR(255)    UNIQUE, NOT NULL        Email address
+email_verified_at       TIMESTAMP       NULLABLE                Email verification timestamp
+password                VARCHAR(255)    NOT NULL                Hashed password
+remember_token          VARCHAR(100)    NULLABLE                Remember token
+two_factor_secret       TEXT            NULLABLE                2FA secret
+two_factor_recovery_codes TEXT          NULLABLE                2FA recovery codes
+two_factor_confirmed_at TIMESTAMP       NULLABLE                2FA confirmation timestamp
+created_at              TIMESTAMP       NULLABLE                Record creation timestamp
+updated_at              TIMESTAMP       NULLABLE                Last update timestamp
+
+INDEXES:
+- PRIMARY KEY (id)
+- UNIQUE INDEX (email)
+
+
+TABLE: accounts
+Description: Extended user accounts with role-based access control
+--------------------------------------------------------------------------------
+Field                   Type            Constraints             Description
+--------------------------------------------------------------------------------
+id                      BIGINT          PRIMARY KEY, AUTO_INC   Account ID
+name                    VARCHAR(255)    NOT NULL                Full name
+email                   VARCHAR(255)    UNIQUE, NOT NULL        Email address
+password                VARCHAR(255)    NOT NULL                Hashed password
+role                    ENUM            NOT NULL                User role
+                                        ('admin', 'user', 
+                                        'priest', 'accountant',
+                                        'church_admin')
+                                        DEFAULT 'user'
+status                  ENUM            NOT NULL                Account status
+                                        ('active', 'inactive')
+                                        DEFAULT 'active'
+email_verified_at       TIMESTAMP       NULLABLE                Email verification timestamp
+remember_token          VARCHAR(100)    NULLABLE                Remember token
+created_at              TIMESTAMP       NULLABLE                Record creation timestamp
+updated_at              TIMESTAMP       NULLABLE                Last update timestamp
+
+INDEXES:
+- PRIMARY KEY (id)
+- UNIQUE INDEX (email)
+- INDEX (role)
+- INDEX (status)
+
+
+TABLE: password_reset_tokens
+Description: Password reset tokens for account recovery
+--------------------------------------------------------------------------------
+Field                   Type            Constraints             Description
+--------------------------------------------------------------------------------
+email                   VARCHAR(255)    PRIMARY KEY             Email address
+token                   VARCHAR(255)    NOT NULL                Reset token
+created_at              TIMESTAMP       NULLABLE                Token creation timestamp
+
+INDEXES:
+- PRIMARY KEY (email)
+
+
+TABLE: sessions
+Description: User sessions management
+--------------------------------------------------------------------------------
+Field                   Type            Constraints             Description
+--------------------------------------------------------------------------------
+id                      VARCHAR(255)    PRIMARY KEY             Session ID
+user_id                 BIGINT          NULLABLE, FOREIGN KEY   User ID reference
+ip_address              VARCHAR(45)     NULLABLE                IP address
+user_agent              TEXT            NULLABLE                User agent string
+payload                 LONGTEXT        NOT NULL                Session payload
+last_activity           INTEGER         NOT NULL                Last activity timestamp
+
+INDEXES:
+- PRIMARY KEY (id)
+- INDEX (user_id)
+- INDEX (last_activity)
+
+FOREIGN KEYS:
+- user_id REFERENCES users(id) ON DELETE SET NULL
+
+
+================================================================================
+2. CHURCH MEMBERSHIP & PERSONNEL
+================================================================================
+
+TABLE: members
+Description: Church members and congregation database
+--------------------------------------------------------------------------------
+Field                   Type            Constraints             Description
+--------------------------------------------------------------------------------
+id                      BIGINT          PRIMARY KEY, AUTO_INC   Member ID
+name                    VARCHAR(255)    NOT NULL                Full name
+email                   VARCHAR(255)    UNIQUE, NOT NULL        Email address
+phone                   VARCHAR(50)     NOT NULL                Phone number
+address                 TEXT            NOT NULL                Full address
+date_of_birth           DATE            NULLABLE                Date of birth
+gender                  ENUM            NULLABLE                Gender
+                                        ('Male', 'Female')
+date_joined             DATE            NOT NULL                Membership start date
+ministry                VARCHAR(255)    NULLABLE                Assigned ministry/group
+membership_type         VARCHAR(100)    NULLABLE                Member type (Regular, Parishioner, etc.)
+family_head             VARCHAR(255)    NULLABLE                Family head/household
+marital_status          VARCHAR(50)     NULLABLE                Marital status
+occupation              VARCHAR(255)    NULLABLE                Occupation
+status                  ENUM            NOT NULL                Membership status
+                                        ('Active', 'Inactive')
+                                        DEFAULT 'Active'
+photo_url               VARCHAR(500)    NULLABLE                Profile photo URL
+emergency_contact       VARCHAR(255)    NULLABLE                Emergency contact person
+emergency_phone         VARCHAR(50)     NULLABLE                Emergency contact phone
+notes                   TEXT            NULLABLE                Additional notes
+created_at              TIMESTAMP       NULLABLE                Record creation timestamp
+updated_at              TIMESTAMP       NULLABLE                Last update timestamp
+
+INDEXES:
+- PRIMARY KEY (id)
+- UNIQUE INDEX (email)
+- INDEX (status)
+- INDEX (date_joined)
+- INDEX (family_head)
+- INDEX (ministry)
+
+
+TABLE: priests
+Description: Clergy and ordained ministers records
+--------------------------------------------------------------------------------
+Field                   Type            Constraints             Description
+--------------------------------------------------------------------------------
+id                      BIGINT          PRIMARY KEY, AUTO_INC   Priest ID
+name                    VARCHAR(255)    NOT NULL                Full name
+email                   VARCHAR(255)    UNIQUE, NOT NULL        Email address
+phone                   VARCHAR(50)     NOT NULL                Phone number
+ordained_date           DATE            NOT NULL                Ordination date
+specialty               VARCHAR(255)    NULLABLE                Specialty/expertise
+status                  ENUM            NOT NULL                Status
+                                        ('active', 'inactive')
+                                        DEFAULT 'active'
+bio                     TEXT            NULLABLE                Biography/description
+title                   VARCHAR(100)    NULLABLE                Title (Father, Reverend, etc.)
+diocese                 VARCHAR(255)    NULLABLE                Diocese assignment
+photo_url               VARCHAR(500)    NULLABLE                Profile photo URL
+created_at              TIMESTAMP       NULLABLE                Record creation timestamp
+updated_at              TIMESTAMP       NULLABLE                Last update timestamp
+
+INDEXES:
+- PRIMARY KEY (id)
+- UNIQUE INDEX (email)
+- INDEX (status)
+
+
+TABLE: staff_schedules
+Description: Church staff scheduling and assignments
+--------------------------------------------------------------------------------
+Field                   Type            Constraints             Description
+--------------------------------------------------------------------------------
+id                      BIGINT          PRIMARY KEY, AUTO_INC   Schedule ID
+staff_id                BIGINT          FOREIGN KEY, NOT NULL   Staff/member ID
+staff_name              VARCHAR(255)    NOT NULL                Staff name
+role                    VARCHAR(100)    NOT NULL                Role/position
+schedule_date           DATE            NOT NULL                Scheduled date
+time_slot               VARCHAR(50)     NOT NULL                Time slot
+service_type            VARCHAR(100)    NULLABLE                Service type
+status                  ENUM            NOT NULL                Status
+                                        ('scheduled', 'completed', 
+                                        'cancelled')
+                                        DEFAULT 'scheduled'
+notes                   TEXT            NULLABLE                Additional notes
+created_at              TIMESTAMP       NULLABLE                Record creation timestamp
+updated_at              TIMESTAMP       NULLABLE                Last update timestamp
+
+INDEXES:
+- PRIMARY KEY (id)
+- INDEX (staff_id)
+- INDEX (schedule_date)
+- INDEX (status)
+
+FOREIGN KEYS:
+- staff_id REFERENCES members(id) ON DELETE CASCADE
+
+
+================================================================================
+3. SACRAMENTS & RELIGIOUS RECORDS
+================================================================================
+
+TABLE: baptism_records
+Description: Baptism sacrament records with scheduling integration
+--------------------------------------------------------------------------------
+Field                   Type            Constraints             Description
+--------------------------------------------------------------------------------
+id                      BIGINT          PRIMARY KEY, AUTO_INC   Record ID
+child_name              VARCHAR(255)    NOT NULL                Child's full name
+child_birthdate         DATE            NOT NULL                Child's date of birth
+child_birthplace        VARCHAR(255)    NOT NULL                Child's place of birth
+child_gender            ENUM            NOT NULL                Child's gender
+                                        ('male', 'female')
+is_legitimate           BOOLEAN         DEFAULT TRUE            Legitimacy status
+father_name             VARCHAR(255)    NOT NULL                Father's full name
+father_birthplace       VARCHAR(255)    NULLABLE                Father's place of birth
+father_religion         VARCHAR(255)    DEFAULT 'Catholic'      Father's religion
+mother_name             VARCHAR(255)    NOT NULL                Mother's full name
+mother_birthplace       VARCHAR(255)    NULLABLE                Mother's place of birth
+mother_religion         VARCHAR(255)    DEFAULT 'Catholic'      Mother's religion
+parents_address         VARCHAR(255)    NOT NULL                Parents' address
+parents_contact         VARCHAR(50)     NULLABLE                Parents' contact number
+baptism_date            DATE            NOT NULL                Baptism date
+baptism_time            TIME            NOT NULL                Baptism time
+baptism_location        VARCHAR(255)    NOT NULL                Baptism venue
+priest_id               BIGINT          FOREIGN KEY, NOT NULL   Officiating priest ID
+schedule_id             BIGINT          FOREIGN KEY, NULLABLE   Connected schedule ID
+godfather_name          VARCHAR(255)    NOT NULL                Godfather's name
+godfather_address       VARCHAR(255)    NULLABLE                Godfather's address
+godmother_name          VARCHAR(255)    NOT NULL                Godmother's name
+godmother_address       VARCHAR(255)    NULLABLE                Godmother's address
+additional_sponsors     JSON            NULLABLE                Additional sponsors list
+baptism_certificate_no  VARCHAR(100)    UNIQUE, NOT NULL        Certificate number
+certificate_issued_date DATE            NOT NULL                Certificate issue date
+birth_certificate_no    VARCHAR(100)    NULLABLE                Birth certificate reference
+birth_cert_submitted    BOOLEAN         DEFAULT FALSE           Birth cert submission status
+marriage_cert_submitted BOOLEAN         DEFAULT FALSE           Marriage cert submission status
+baptism_seminar_completed BOOLEAN       DEFAULT FALSE           Seminar completion status
+seminar_completion_date DATE            NULLABLE                Seminar completion date
+first_communion_date    VARCHAR(100)    NULLABLE                First communion date (if any)
+confirmation_date       VARCHAR(100)    NULLABLE                Confirmation date (if any)
+notes                   TEXT            NULLABLE                Additional remarks
+status                  ENUM            NOT NULL                Record status
+                                        ('pending', 'approved',
+                                        'completed', 'cancelled')
+                                        DEFAULT 'pending'
+created_at              TIMESTAMP       NULLABLE                Record creation timestamp
+updated_at              TIMESTAMP       NULLABLE                Last update timestamp
+deleted_at              TIMESTAMP       NULLABLE                Soft delete timestamp
+
+INDEXES:
+- PRIMARY KEY (id)
+- UNIQUE INDEX (baptism_certificate_no)
+- INDEX (baptism_date)
+- INDEX (priest_id)
+- INDEX (schedule_id)
+- INDEX (status)
+- INDEX (child_name)
+- INDEX (father_name, mother_name)
+
+FOREIGN KEYS:
+- priest_id REFERENCES priests(id) ON DELETE CASCADE
+- schedule_id REFERENCES schedules(id) ON DELETE SET NULL
+
+
+TABLE: marriage_records
+Description: Marriage/wedding sacrament records with scheduling integration
+--------------------------------------------------------------------------------
+Field                   Type            Constraints             Description
+--------------------------------------------------------------------------------
+id                      BIGINT          PRIMARY KEY, AUTO_INC   Record ID
+groom_name              VARCHAR(255)    NOT NULL                Groom's full name
+groom_birthdate         DATE            NOT NULL                Groom's date of birth
+groom_birthplace        VARCHAR(255)    NOT NULL                Groom's place of birth
+groom_father_name       VARCHAR(255)    NOT NULL                Groom's father name
+groom_mother_name       VARCHAR(255)    NOT NULL                Groom's mother name
+groom_address           VARCHAR(255)    NOT NULL                Groom's address
+groom_religion          VARCHAR(255)    DEFAULT 'Catholic'      Groom's religion
+groom_civil_status      ENUM            NOT NULL                Groom's civil status
+                                        ('single', 'widowed',
+                                        'annulled')
+                                        DEFAULT 'single'
+bride_name              VARCHAR(255)    NOT NULL                Bride's full name
+bride_birthdate         DATE            NOT NULL                Bride's date of birth
+bride_birthplace        VARCHAR(255)    NOT NULL                Bride's place of birth
+bride_father_name       VARCHAR(255)    NOT NULL                Bride's father name
+bride_mother_name       VARCHAR(255)    NOT NULL                Bride's mother name
+bride_address           VARCHAR(255)    NOT NULL                Bride's address
+bride_religion          VARCHAR(255)    DEFAULT 'Catholic'      Bride's religion
+bride_civil_status      ENUM            NOT NULL                Bride's civil status
+                                        ('single', 'widowed',
+                                        'annulled')
+                                        DEFAULT 'single'
+marriage_date           DATE            NOT NULL                Marriage date
+marriage_time           TIME            NOT NULL                Marriage time
+marriage_location       VARCHAR(255)    NOT NULL                Wedding venue
+priest_id               BIGINT          FOREIGN KEY, NOT NULL   Officiating priest ID
+schedule_id             BIGINT          FOREIGN KEY, NULLABLE   Connected schedule ID
+sponsors                JSON            NULLABLE                Sponsors/witnesses list
+witness_1_name          VARCHAR(255)    NULLABLE                Primary witness name
+witness_2_name          VARCHAR(255)    NULLABLE                Secondary witness name
+marriage_license_no     VARCHAR(100)    NULLABLE                Marriage license number
+marriage_license_date   DATE            NULLABLE                License issue date
+marriage_certificate_no VARCHAR(100)    UNIQUE, NOT NULL        Certificate number
+certificate_issued_date DATE            NOT NULL                Certificate issue date
+baptismal_cert_submitted BOOLEAN        DEFAULT FALSE           Baptismal cert submission
+confirmation_cert_submitted BOOLEAN     DEFAULT FALSE           Confirmation cert submission
+cenomar_submitted       BOOLEAN         DEFAULT FALSE           CENOMAR submission status
+pre_cana_completed      BOOLEAN         DEFAULT FALSE           Pre-Cana completion status
+pre_cana_completion_date DATE           NULLABLE                Pre-Cana completion date
+notes                   TEXT            NULLABLE                Additional remarks
+status                  ENUM            NOT NULL                Record status
+                                        ('pending', 'approved',
+                                        'completed', 'cancelled')
+                                        DEFAULT 'pending'
+created_at              TIMESTAMP       NULLABLE                Record creation timestamp
+updated_at              TIMESTAMP       NULLABLE                Last update timestamp
+deleted_at              TIMESTAMP       NULLABLE                Soft delete timestamp
+
+INDEXES:
+- PRIMARY KEY (id)
+- UNIQUE INDEX (marriage_certificate_no)
+- INDEX (marriage_date)
+- INDEX (priest_id)
+- INDEX (schedule_id)
+- INDEX (status)
+- INDEX (groom_name, bride_name)
+
+FOREIGN KEYS:
+- priest_id REFERENCES priests(id) ON DELETE CASCADE
+- schedule_id REFERENCES schedules(id) ON DELETE SET NULL
+
+
+TABLE: birth_records
+Description: Civil birth records with baptism tracking and scheduling
+--------------------------------------------------------------------------------
+Field                   Type            Constraints             Description
+--------------------------------------------------------------------------------
+id                      BIGINT          PRIMARY KEY, AUTO_INC   Record ID
+child_name              VARCHAR(255)    NOT NULL                Child's full name
+birth_date              DATE            NOT NULL                Birth date
+birth_time              TIME            NULLABLE                Birth time
+birth_place             VARCHAR(255)    NOT NULL                Birth place
+gender                  ENUM            NOT NULL                Gender
+                                        ('male', 'female')
+birth_weight            DECIMAL(5,2)    NULLABLE                Birth weight (kg)
+birth_height            DECIMAL(5,2)    NULLABLE                Birth height (cm)
+father_name             VARCHAR(255)    NOT NULL                Father's full name
+father_citizenship      VARCHAR(100)    NULLABLE                Father's citizenship
+father_occupation       VARCHAR(255)    NULLABLE                Father's occupation
+father_age_at_birth     INTEGER         NULLABLE                Father's age at birth
+mother_maiden_name      VARCHAR(255)    NOT NULL                Mother's maiden name
+mother_citizenship      VARCHAR(100)    NULLABLE                Mother's citizenship
+mother_occupation       VARCHAR(255)    NULLABLE                Mother's occupation
+mother_age_at_birth     INTEGER         NULLABLE                Mother's age at birth
+parents_marriage_date   DATE            NULLABLE                Parents' marriage date
+parents_marriage_place  VARCHAR(255)    NULLABLE                Parents' marriage place
+residence_address       VARCHAR(255)    NOT NULL                Residence address
+residence_city          VARCHAR(255)    NOT NULL                City/municipality
+residence_province      VARCHAR(255)    NOT NULL                Province
+residence_country       VARCHAR(255)    DEFAULT 'Philippines'   Country
+birth_certificate_no    VARCHAR(100)    UNIQUE, NOT NULL        Birth certificate number
+registration_date       DATE            NOT NULL                Registration date
+registered_by           VARCHAR(255)    NULLABLE                Registrar name
+civil_registrar         VARCHAR(255)    NULLABLE                Civil registrar office
+baptism_record_id       BIGINT          FOREIGN KEY, NULLABLE   Linked baptism record ID
+is_baptized             BOOLEAN         DEFAULT FALSE           Baptism status
+baptism_scheduled_date  DATE            NULLABLE                Scheduled baptism date
+baptism_schedule_id     BIGINT          FOREIGN KEY, NULLABLE   Baptism schedule ID
+psa_copy_issued         BOOLEAN         DEFAULT FALSE           PSA copy issued status
+psa_copy_issue_date     DATE            NULLABLE                PSA copy issue date
+psa_copies_count        INTEGER         DEFAULT 0               Number of PSA copies issued
+birth_type              ENUM            NOT NULL                Birth type
+                                        ('live', 'stillborn',
+                                        'multiple')
+                                        DEFAULT 'live'
+birth_order             INTEGER         NULLABLE                Birth order (for multiples)
+medical_notes           TEXT            NULLABLE                Medical notes
+notes                   TEXT            NULLABLE                Additional remarks
+status                  ENUM            NOT NULL                Record status
+                                        ('registered', 'pending',
+                                        'amended', 'cancelled')
+                                        DEFAULT 'registered'
+created_at              TIMESTAMP       NULLABLE                Record creation timestamp
+updated_at              TIMESTAMP       NULLABLE                Last update timestamp
+deleted_at              TIMESTAMP       NULLABLE                Soft delete timestamp
+
+INDEXES:
+- PRIMARY KEY (id)
+- UNIQUE INDEX (birth_certificate_no)
+- INDEX (birth_date)
+- INDEX (baptism_record_id)
+- INDEX (baptism_schedule_id)
+- INDEX (status)
+- INDEX (child_name)
+- INDEX (father_name, mother_maiden_name)
+- INDEX (registration_date)
+
+FOREIGN KEYS:
+- baptism_record_id REFERENCES baptism_records(id) ON DELETE SET NULL
+- baptism_schedule_id REFERENCES schedules(id) ON DELETE SET NULL
+
+
+TABLE: confirmation_records
+Description: Confirmation sacrament records
+--------------------------------------------------------------------------------
+Field                   Type            Constraints             Description
+--------------------------------------------------------------------------------
+id                      BIGINT          PRIMARY KEY, AUTO_INC   Record ID
+confirmand_name         VARCHAR(255)    NOT NULL                Confirmand's name
+date_of_birth           DATE            NOT NULL                Date of birth
+confirmation_date       DATE            NULLABLE                Confirmation date
+confirmation_place      VARCHAR(255)    NULLABLE                Confirmation venue
+priest_id               BIGINT          FOREIGN KEY, NULLABLE   Officiating priest ID
+priest_name             VARCHAR(255)    NULLABLE                Priest name
+sponsor                 VARCHAR(255)    NULLABLE                Sponsor/godparent
+baptism_cert_no         VARCHAR(100)    NULLABLE                Baptism certificate reference
+certificate_number      VARCHAR(100)    UNIQUE, NULLABLE        Certificate number
+status                  ENUM            NOT NULL                Record status
+                                        ('Complete', 'Pending', 
+                                        'Cancelled')
+                                        DEFAULT 'Pending'
+encoded_by              VARCHAR(255)    NULLABLE                Encoder name
+remarks                 TEXT            NULLABLE                Additional remarks
+created_at              TIMESTAMP       NULLABLE                Record creation timestamp
+updated_at              TIMESTAMP       NULLABLE                Last update timestamp
+
+INDEXES:
+- PRIMARY KEY (id)
+- UNIQUE INDEX (certificate_number)
+- INDEX (confirmation_date)
+- INDEX (priest_id)
+- INDEX (status)
+
+FOREIGN KEYS:
+- priest_id REFERENCES priests(id) ON DELETE SET NULL
+
+
+TABLE: first_communion_records
+Description: First Holy Communion records
+--------------------------------------------------------------------------------
+Field                   Type            Constraints             Description
+--------------------------------------------------------------------------------
+id                      BIGINT          PRIMARY KEY, AUTO_INC   Record ID
+child_name              VARCHAR(255)    NOT NULL                Child's name
+date_of_birth           DATE            NOT NULL                Date of birth
+communion_date          DATE            NULLABLE                First communion date
+communion_place         VARCHAR(255)    NULLABLE                Venue
+priest_id               BIGINT          FOREIGN KEY, NULLABLE   Officiating priest ID
+priest_name             VARCHAR(255)    NULLABLE                Priest name
+parents                 VARCHAR(255)    NULLABLE                Parents' names
+catechism_completed     BOOLEAN         DEFAULT FALSE           Catechism completion status
+certificate_number      VARCHAR(100)    UNIQUE, NULLABLE        Certificate number
+status                  ENUM            NOT NULL                Record status
+                                        ('Complete', 'Pending')
+                                        DEFAULT 'Pending'
+created_at              TIMESTAMP       NULLABLE                Record creation timestamp
+updated_at              TIMESTAMP       NULLABLE                Last update timestamp
+
+INDEXES:
+- PRIMARY KEY (id)
+- UNIQUE INDEX (certificate_number)
+- INDEX (communion_date)
+- INDEX (priest_id)
+- INDEX (status)
+
+FOREIGN KEYS:
+- priest_id REFERENCES priests(id) ON DELETE SET NULL
+
+
+TABLE: funeral_records
+Description: Funeral service records
+--------------------------------------------------------------------------------
+Field                   Type            Constraints             Description
+--------------------------------------------------------------------------------
+id                      BIGINT          PRIMARY KEY, AUTO_INC   Record ID
+deceased_name           VARCHAR(255)    NOT NULL                Deceased's name
+date_of_death           DATE            NOT NULL                Date of death
+date_of_birth           DATE            NULLABLE                Date of birth
+funeral_date            DATE            NULLABLE                Funeral date
+funeral_place           VARCHAR(255)    NULLABLE                Funeral venue
+burial_place            VARCHAR(255)    NULLABLE                Burial location
+priest_id               BIGINT          FOREIGN KEY, NULLABLE   Officiating priest ID
+priest_name             VARCHAR(255)    NULLABLE                Priest name
+family_contact          VARCHAR(255)    NULLABLE                Family contact person
+family_phone            VARCHAR(50)     NULLABLE                Family contact phone
+cause_of_death          VARCHAR(255)    NULLABLE                Cause of death
+status                  ENUM            NOT NULL                Service status
+                                        ('Scheduled', 'Complete', 
+                                        'Cancelled')
+                                        DEFAULT 'Scheduled'
+remarks                 TEXT            NULLABLE                Additional remarks
+created_at              TIMESTAMP       NULLABLE                Record creation timestamp
+updated_at              TIMESTAMP       NULLABLE                Last update timestamp
+
+INDEXES:
+- PRIMARY KEY (id)
+- INDEX (funeral_date)
+- INDEX (priest_id)
+- INDEX (status)
+
+FOREIGN KEYS:
+- priest_id REFERENCES priests(id) ON DELETE SET NULL
+
+
+================================================================================
+4. FINANCIAL MANAGEMENT
+================================================================================
+
+TABLE: donations
+Description: Church donations and offerings records
+--------------------------------------------------------------------------------
+Field                   Type            Constraints             Description
+--------------------------------------------------------------------------------
+id                      BIGINT          PRIMARY KEY, AUTO_INC   Donation ID
+date                    DATE            NOT NULL                Donation date
+donor_id                BIGINT          FOREIGN KEY, NULLABLE   Donor member ID
+donor_name              VARCHAR(255)    NOT NULL                Donor name (can be guest)
+donor_type              ENUM            NOT NULL                Donor type
+                                        ('Member', 'Guest')
+                                        DEFAULT 'Guest'
+category                VARCHAR(100)    NOT NULL                Donation category
+                                        (Tithes, Offerings, 
+                                        Building Fund, etc.)
+amount                  DECIMAL(10,2)   NOT NULL                Donation amount
+payment_method          VARCHAR(50)     NOT NULL                Payment method
+                                        (Cash, Check, Online)
+receipt_number          VARCHAR(100)    UNIQUE, NOT NULL        Receipt number
+reference_number        VARCHAR(100)    NULLABLE                Transaction reference
+encoded_by              VARCHAR(255)    NULLABLE                Encoder name
+notes                   TEXT            NULLABLE                Additional notes
+is_anonymous            BOOLEAN         DEFAULT FALSE           Anonymous donation flag
+tax_deductible          BOOLEAN         DEFAULT TRUE            Tax deductible flag
+created_at              TIMESTAMP       NULLABLE                Record creation timestamp
+updated_at              TIMESTAMP       NULLABLE                Last update timestamp
+
+INDEXES:
+- PRIMARY KEY (id)
+- UNIQUE INDEX (receipt_number)
+- INDEX (donor_id)
+- INDEX (date)
+- INDEX (category)
+
+FOREIGN KEYS:
+- donor_id REFERENCES members(id) ON DELETE SET NULL
+
+
+TABLE: financial_documents
+Description: Financial documents and receipts storage
+--------------------------------------------------------------------------------
+Field                   Type            Constraints             Description
+--------------------------------------------------------------------------------
+id                      BIGINT          PRIMARY KEY, AUTO_INC   Document ID
+filename                VARCHAR(255)    NOT NULL                File name
+original_filename       VARCHAR(255)    NOT NULL                Original file name
+file_path               VARCHAR(500)    NOT NULL                File storage path
+file_size               INTEGER         NOT NULL                File size in bytes
+mime_type               VARCHAR(100)    NOT NULL                File MIME type
+category                VARCHAR(100)    NOT NULL                Document category
+                                        (Receipts, Invoices, 
+                                        Reports, Statements, etc.)
+description             TEXT            NULLABLE                Document description
+uploaded_by             VARCHAR(255)    NULLABLE                Uploader name
+uploaded_date           DATE            NOT NULL                Upload date
+document_date           DATE            NULLABLE                Document date
+related_id              BIGINT          NULLABLE                Related record ID
+related_type            VARCHAR(100)    NULLABLE                Related record type
+is_archived             BOOLEAN         DEFAULT FALSE           Archive flag
+created_at              TIMESTAMP       NULLABLE                Record creation timestamp
+updated_at              TIMESTAMP       NULLABLE                Last update timestamp
+
+INDEXES:
+- PRIMARY KEY (id)
+- INDEX (category)
+- INDEX (uploaded_date)
+- INDEX (document_date)
+- INDEX (related_id, related_type)
+
+
+TABLE: billing_records
+Description: Church billing and collection records
+--------------------------------------------------------------------------------
+Field                   Type            Constraints             Description
+--------------------------------------------------------------------------------
+id                      BIGINT          PRIMARY KEY, AUTO_INC   Billing ID
+member_id               BIGINT          FOREIGN KEY, NOT NULL   Member ID
+billing_type            VARCHAR(100)    NOT NULL                Billing type
+                                        (Tuition, Service Fee, etc.)
+amount                  DECIMAL(10,2)   NOT NULL                Bill amount
+due_date                DATE            NOT NULL                Payment due date
+paid_date               DATE            NULLABLE                Payment date
+paid_amount             DECIMAL(10,2)   NULLABLE                Amount paid
+balance                 DECIMAL(10,2)   COMPUTED                Remaining balance
+status                  ENUM            NOT NULL                Payment status
+                                        ('Pending', 'Partial', 
+                                        'Paid', 'Overdue')
+                                        DEFAULT 'Pending'
+receipt_number          VARCHAR(100)    UNIQUE, NULLABLE        Receipt number
+payment_method          VARCHAR(50)     NULLABLE                Payment method
+notes                   TEXT            NULLABLE                Additional notes
+created_at              TIMESTAMP       NULLABLE                Record creation timestamp
+updated_at              TIMESTAMP       NULLABLE                Last update timestamp
+
+INDEXES:
+- PRIMARY KEY (id)
+- INDEX (member_id)
+- INDEX (due_date)
+- INDEX (status)
+
+FOREIGN KEYS:
+- member_id REFERENCES members(id) ON DELETE CASCADE
+
+
+TABLE: financial_reports
+Description: Generated financial reports metadata
+--------------------------------------------------------------------------------
+Field                   Type            Constraints             Description
+--------------------------------------------------------------------------------
+id                      BIGINT          PRIMARY KEY, AUTO_INC   Report ID
+report_type             VARCHAR(100)    NOT NULL                Report type
+                                        (Donations, Income, 
+                                        Expenses, etc.)
+report_title            VARCHAR(255)    NOT NULL                Report title
+period_from             DATE            NOT NULL                Report period start
+period_to               DATE            NOT NULL                Report period end
+total_amount            DECIMAL(12,2)   NULLABLE                Total amount
+generated_by            VARCHAR(255)    NOT NULL                Generator name
+generated_date          TIMESTAMP       NOT NULL                Generation timestamp
+file_path               VARCHAR(500)    NULLABLE                Report file path
+notes                   TEXT            NULLABLE                Report notes
+created_at              TIMESTAMP       NULLABLE                Record creation timestamp
+updated_at              TIMESTAMP       NULLABLE                Last update timestamp
+
+INDEXES:
+- PRIMARY KEY (id)
+- INDEX (report_type)
+- INDEX (period_from, period_to)
+- INDEX (generated_date)
+
+
+================================================================================
+5. EVENTS & SCHEDULING
+================================================================================
+
+TABLE: schedules
+Description: Church events, mass schedules, and sacrament bookings with 
+             integrated connections to baptism and marriage records
+--------------------------------------------------------------------------------
+Field                   Type            Constraints             Description
+--------------------------------------------------------------------------------
+id                      BIGINT          PRIMARY KEY, AUTO_INC   Schedule ID
+title                   VARCHAR(255)    NOT NULL                Event title
+date                    DATE            NOT NULL                Event date
+time                    TIME            NOT NULL                Start time
+end_time                TIME            NULLABLE                End time
+type                    VARCHAR(100)    NOT NULL                Event type
+                                        (Mass, Wedding, Baptism, 
+                                        Meeting, Funeral, etc.)
+location                VARCHAR(255)    NULLABLE                Event location
+priest_id               BIGINT          FOREIGN KEY, NULLABLE   Assigned priest ID
+description             TEXT            NULLABLE                Event description
+attendees               INTEGER         NULLABLE                Expected attendees
+status                  ENUM            NOT NULL                Event status
+                                        ('scheduled', 'completed', 
+                                        'cancelled')
+                                        DEFAULT 'scheduled'
+created_at              TIMESTAMP       NULLABLE                Record creation timestamp
+updated_at              TIMESTAMP       NULLABLE                Last update timestamp
+
+INDEXES:
+- PRIMARY KEY (id)
+- INDEX (date)
+- INDEX (type)
+- INDEX (priest_id)
+- INDEX (status)
+
+FOREIGN KEYS:
+- priest_id REFERENCES priests(id) ON DELETE SET NULL
+
+RELATIONSHIPS:
+- Has one: marriage_record (when type = 'Wedding' or 'Marriage')
+- Has one: baptism_record (when type = 'Baptism')
+- Has many: birth_records (via baptism_schedule_id for scheduled baptisms)
+- Belongs to: priest
+
+
+TABLE: events
+Description: Church events and activities
+--------------------------------------------------------------------------------
+Field                   Type            Constraints             Description
+--------------------------------------------------------------------------------
+id                      BIGINT          PRIMARY KEY, AUTO_INC   Event ID
+title                   VARCHAR(255)    NOT NULL                Event title
+description             TEXT            NULLABLE                Event description
+event_date              DATE            NOT NULL                Event date
+start_time              TIME            NULLABLE                Start time
+end_time                TIME            NULLABLE                End time
+location                VARCHAR(255)    NOT NULL                Event location
+event_type              VARCHAR(100)    NOT NULL                Event type
+                                        (Religious, Social, 
+                                        Fundraiser, etc.)
+organizer               VARCHAR(255)    NULLABLE                Organizer name
+target_audience         VARCHAR(255)    NULLABLE                Target audience
+expected_attendees      INTEGER         NULLABLE                Expected attendees
+actual_attendees        INTEGER         NULLABLE                Actual attendees
+budget                  DECIMAL(10,2)   NULLABLE                Event budget
+status                  ENUM            NOT NULL                Event status
+                                        ('Planning', 'Scheduled', 
+                                        'Ongoing', 'Completed', 
+                                        'Cancelled')
+                                        DEFAULT 'Planning'
+created_at              TIMESTAMP       NULLABLE                Record creation timestamp
+updated_at              TIMESTAMP       NULLABLE                Last update timestamp
+
+INDEXES:
+- PRIMARY KEY (id)
+- INDEX (event_date)
+- INDEX (event_type)
+- INDEX (status)
+
+
+================================================================================
+6. SERVICE REQUESTS & APPLICATIONS
+================================================================================
+
+TABLE: service_requests
+Description: Member service requests (baptism, wedding, etc.)
+--------------------------------------------------------------------------------
+Field                   Type            Constraints             Description
+--------------------------------------------------------------------------------
+id                      BIGINT          PRIMARY KEY, AUTO_INC   Request ID
+request_type            VARCHAR(100)    NOT NULL                Service type
+                                        (Baptism, Wedding, 
+                                        Funeral, Confirmation, 
+                                        First Communion, 
+                                        House Blessing, etc.)
+requester_name          VARCHAR(255)    NOT NULL                Requester name
+requester_id            BIGINT          FOREIGN KEY, NULLABLE   Member ID (if member)
+requester_phone         VARCHAR(50)     NOT NULL                Contact phone
+requester_email         VARCHAR(255)    NOT NULL                Contact email
+request_date            DATE            NOT NULL                Request submission date
+preferred_date          DATE            NULLABLE                Preferred service date
+preferred_time          TIME            NULLABLE                Preferred service time
+participant_name        VARCHAR(255)    NULLABLE                Participant name (child, deceased, etc.)
+additional_details      TEXT            NULLABLE                Additional details
+status                  ENUM            NOT NULL                Request status
+                                        ('Pending', 'Approved', 
+                                        'Rejected', 'Completed', 
+                                        'Cancelled')
+                                        DEFAULT 'Pending'
+assigned_priest_id      BIGINT          FOREIGN KEY, NULLABLE   Assigned priest ID
+approved_date           DATE            NULLABLE                Approval date
+scheduled_date          DATE            NULLABLE                Actual scheduled date
+notes                   TEXT            NULLABLE                Admin notes
+rejection_reason        TEXT            NULLABLE                Rejection reason
+created_at              TIMESTAMP       NULLABLE                Record creation timestamp
+updated_at              TIMESTAMP       NULLABLE                Last update timestamp
+
+INDEXES:
+- PRIMARY KEY (id)
+- INDEX (requester_id)
+- INDEX (request_type)
+- INDEX (status)
+- INDEX (request_date)
+- INDEX (assigned_priest_id)
+
+FOREIGN KEYS:
+- requester_id REFERENCES members(id) ON DELETE SET NULL
+- assigned_priest_id REFERENCES priests(id) ON DELETE SET NULL
+
+
+TABLE: certificate_requests
+Description: Certificate issuance requests
+--------------------------------------------------------------------------------
+Field                   Type            Constraints             Description
+--------------------------------------------------------------------------------
+id                      BIGINT          PRIMARY KEY, AUTO_INC   Request ID
+requester_id            BIGINT          FOREIGN KEY, NULLABLE   Requester member ID
+requester_name          VARCHAR(255)    NOT NULL                Requester name
+requester_contact       VARCHAR(50)     NOT NULL                Contact information
+certificate_type        VARCHAR(100)    NOT NULL                Certificate type
+                                        (Baptism, Marriage, 
+                                        Confirmation, etc.)
+purpose                 VARCHAR(255)    NOT NULL                Purpose of request
+subject_name            VARCHAR(255)    NOT NULL                Subject person name
+event_date              DATE            NULLABLE                Event date reference
+request_date            DATE            NOT NULL                Request date
+required_date           DATE            NULLABLE                Required delivery date
+status                  ENUM            NOT NULL                Request status
+                                        ('Pending', 'Processing', 
+                                        'Ready', 'Released', 
+                                        'Rejected')
+                                        DEFAULT 'Pending'
+processed_by            VARCHAR(255)    NULLABLE                Processor name
+released_date           DATE            NULLABLE                Release date
+notes                   TEXT            NULLABLE                Additional notes
+created_at              TIMESTAMP       NULLABLE                Record creation timestamp
+updated_at              TIMESTAMP       NULLABLE                Last update timestamp
+
+INDEXES:
+- PRIMARY KEY (id)
+- INDEX (requester_id)
+- INDEX (certificate_type)
+- INDEX (status)
+- INDEX (request_date)
+
+FOREIGN KEYS:
+- requester_id REFERENCES members(id) ON DELETE SET NULL
+
+
+================================================================================
+7. DOCUMENTS & FILE MANAGEMENT
+================================================================================
+
+TABLE: documents
+Description: General document management and file storage
+--------------------------------------------------------------------------------
+Field                   Type            Constraints             Description
+--------------------------------------------------------------------------------
+id                      BIGINT          PRIMARY KEY, AUTO_INC   Document ID
+title                   VARCHAR(255)    NOT NULL                Document title
+filename                VARCHAR(255)    NOT NULL                Stored filename
+original_filename       VARCHAR(255)    NOT NULL                Original filename
+file_path               VARCHAR(500)    NOT NULL                File storage path
+file_size               INTEGER         NOT NULL                File size (bytes)
+mime_type               VARCHAR(100)    NOT NULL                MIME type
+category                VARCHAR(100)    NOT NULL                Document category
+                                        (Policies, Forms, 
+                                        Guidelines, Reports, etc.)
+description             TEXT            NULLABLE                Description
+tags                    TEXT            NULLABLE                Search tags (comma-separated)
+uploaded_by             VARCHAR(255)    NOT NULL                Uploader name
+upload_date             DATE            NOT NULL                Upload date
+access_level            ENUM            NOT NULL                Access permission
+                                        ('Public', 'Members', 
+                                        'Staff', 'Admin')
+                                        DEFAULT 'Members'
+is_archived             BOOLEAN         DEFAULT FALSE           Archive status
+download_count          INTEGER         DEFAULT 0               Download counter
+created_at              TIMESTAMP       NULLABLE                Record creation timestamp
+updated_at              TIMESTAMP       NULLABLE                Last update timestamp
+
+INDEXES:
+- PRIMARY KEY (id)
+- INDEX (category)
+- INDEX (upload_date)
+- INDEX (access_level)
+- FULLTEXT INDEX (title, description, tags)
+
+
+TABLE: uploaded_files
+Description: User-uploaded files (admin/user file management)
+--------------------------------------------------------------------------------
+Field                   Type            Constraints             Description
+--------------------------------------------------------------------------------
+id                      BIGINT          PRIMARY KEY, AUTO_INC   File ID
+filename                VARCHAR(255)    NOT NULL                Display filename
+stored_filename         VARCHAR(255)    NOT NULL                System filename
+file_path               VARCHAR(500)    NOT NULL                Storage path
+file_size               INTEGER         NOT NULL                File size (bytes)
+mime_type               VARCHAR(100)    NOT NULL                MIME type
+category                VARCHAR(100)    NOT NULL                File category
+uploaded_by_id          BIGINT          FOREIGN KEY, NULLABLE   Uploader user ID
+uploaded_by_name        VARCHAR(255)    NOT NULL                Uploader name
+upload_date             TIMESTAMP       NOT NULL                Upload timestamp
+description             TEXT            NULLABLE                File description
+is_public               BOOLEAN         DEFAULT FALSE           Public access flag
+created_at              TIMESTAMP       NULLABLE                Record creation timestamp
+updated_at              TIMESTAMP       NULLABLE                Last update timestamp
+
+INDEXES:
+- PRIMARY KEY (id)
+- INDEX (uploaded_by_id)
+- INDEX (category)
+- INDEX (upload_date)
+
+FOREIGN KEYS:
+- uploaded_by_id REFERENCES users(id) ON DELETE SET NULL
+
+
+TABLE: attachments
+Description: File attachments linked to various records
+--------------------------------------------------------------------------------
+Field                   Type            Constraints             Description
+--------------------------------------------------------------------------------
+id                      BIGINT          PRIMARY KEY, AUTO_INC   Attachment ID
+attachable_type         VARCHAR(100)    NOT NULL                Related model type
+attachable_id           BIGINT          NOT NULL                Related record ID
+filename                VARCHAR(255)    NOT NULL                Filename
+file_path               VARCHAR(500)    NOT NULL                Storage path
+file_size               INTEGER         NOT NULL                File size (bytes)
+mime_type               VARCHAR(100)    NOT NULL                MIME type
+description             TEXT            NULLABLE                Description
+uploaded_by             VARCHAR(255)    NULLABLE                Uploader name
+created_at              TIMESTAMP       NULLABLE                Record creation timestamp
+updated_at              TIMESTAMP       NULLABLE                Last update timestamp
+
+INDEXES:
+- PRIMARY KEY (id)
+- INDEX (attachable_type, attachable_id)
+
+
+================================================================================
+8. COMMUNICATIONS & NOTIFICATIONS
+================================================================================
+
+TABLE: announcements
+Description: Church announcements and bulletins
+--------------------------------------------------------------------------------
+Field                   Type            Constraints             Description
+--------------------------------------------------------------------------------
+id                      BIGINT          PRIMARY KEY, AUTO_INC   Announcement ID
+title                   VARCHAR(255)    NOT NULL                Announcement title
+content                 TEXT            NOT NULL                Announcement content
+announcement_type       VARCHAR(100)    NOT NULL                Type
+                                        (General, Urgent, 
+                                        Event, Mass Schedule, etc.)
+priority                ENUM            NOT NULL                Priority level
+                                        ('Low', 'Normal', 'High')
+                                        DEFAULT 'Normal'
+publish_date            DATE            NOT NULL                Publish date
+expiry_date             DATE            NULLABLE                Expiration date
+target_audience         VARCHAR(255)    NULLABLE                Target audience
+is_published            BOOLEAN         DEFAULT FALSE           Published status
+author_name             VARCHAR(255)    NOT NULL                Author name
+attachments             TEXT            NULLABLE                Attachment file paths (JSON)
+view_count              INTEGER         DEFAULT 0               View counter
+created_at              TIMESTAMP       NULLABLE                Record creation timestamp
+updated_at              TIMESTAMP       NULLABLE                Last update timestamp
+
+INDEXES:
+- PRIMARY KEY (id)
+- INDEX (publish_date)
+- INDEX (expiry_date)
+- INDEX (is_published)
+- INDEX (announcement_type)
+
+
+TABLE: notifications
+Description: User notifications system
+--------------------------------------------------------------------------------
+Field                   Type            Constraints             Description
+--------------------------------------------------------------------------------
+id                      BIGINT          PRIMARY KEY, AUTO_INC   Notification ID
+user_id                 BIGINT          FOREIGN KEY, NOT NULL   Target user ID
+title                   VARCHAR(255)    NOT NULL                Notification title
+message                 TEXT            NOT NULL                Notification message
+type                    VARCHAR(100)    NOT NULL                Notification type
+                                        (Request, Approval, 
+                                        Reminder, Alert, etc.)
+related_type            VARCHAR(100)    NULLABLE                Related record type
+related_id              BIGINT          NULLABLE                Related record ID
+is_read                 BOOLEAN         DEFAULT FALSE           Read status
+read_at                 TIMESTAMP       NULLABLE                Read timestamp
+action_url              VARCHAR(500)    NULLABLE                Action link URL
+created_at              TIMESTAMP       NULLABLE                Record creation timestamp
+updated_at              TIMESTAMP       NULLABLE                Last update timestamp
+
+INDEXES:
+- PRIMARY KEY (id)
+- INDEX (user_id)
+- INDEX (is_read)
+- INDEX (created_at)
+- INDEX (related_type, related_id)
+
+FOREIGN KEYS:
+- user_id REFERENCES users(id) ON DELETE CASCADE
+
+
+TABLE: messages
+Description: Internal messaging system
+--------------------------------------------------------------------------------
+Field                   Type            Constraints             Description
+--------------------------------------------------------------------------------
+id                      BIGINT          PRIMARY KEY, AUTO_INC   Message ID
+sender_id               BIGINT          FOREIGN KEY, NOT NULL   Sender user ID
+recipient_id            BIGINT          FOREIGN KEY, NOT NULL   Recipient user ID
+subject                 VARCHAR(255)    NOT NULL                Message subject
+body                    TEXT            NOT NULL                Message body
+is_read                 BOOLEAN         DEFAULT FALSE           Read status
+read_at                 TIMESTAMP       NULLABLE                Read timestamp
+parent_message_id       BIGINT          FOREIGN KEY, NULLABLE   Parent message (for replies)
+is_archived             BOOLEAN         DEFAULT FALSE           Archive status
+created_at              TIMESTAMP       NULLABLE                Record creation timestamp
+updated_at              TIMESTAMP       NULLABLE                Last update timestamp
+
+INDEXES:
+- PRIMARY KEY (id)
+- INDEX (sender_id)
+- INDEX (recipient_id)
+- INDEX (is_read)
+- INDEX (parent_message_id)
+
+FOREIGN KEYS:
+- sender_id REFERENCES users(id) ON DELETE CASCADE
+- recipient_id REFERENCES users(id) ON DELETE CASCADE
+- parent_message_id REFERENCES messages(id) ON DELETE CASCADE
+
+
+================================================================================
+9. ADMINISTRATIVE & SYSTEM TABLES
+================================================================================
+
+TABLE: audit_logs
+Description: System activity audit trail
+--------------------------------------------------------------------------------
+Field                   Type            Constraints             Description
+--------------------------------------------------------------------------------
+id                      BIGINT          PRIMARY KEY, AUTO_INC   Log ID
+user_id                 BIGINT          FOREIGN KEY, NULLABLE   User ID
+user_name               VARCHAR(255)    NULLABLE                User name
+action                  VARCHAR(255)    NOT NULL                Action performed
+                                        (User Login, Record Updated, 
+                                        User Created, etc.)
+entity_type             VARCHAR(100)    NULLABLE                Affected entity type
+entity_id               BIGINT          NULLABLE                Affected entity ID
+details                 TEXT            NULLABLE                Action details
+ip_address              VARCHAR(45)     NULLABLE                IP address
+user_agent              TEXT            NULLABLE                User agent string
+action_type             ENUM            NOT NULL                Action category
+                                        ('success', 'info', 
+                                        'warning', 'error')
+                                        DEFAULT 'info'
+timestamp               TIMESTAMP       NOT NULL                Action timestamp
+created_at              TIMESTAMP       NULLABLE                Record creation timestamp
+
+INDEXES:
+- PRIMARY KEY (id)
+- INDEX (user_id)
+- INDEX (timestamp)
+- INDEX (action_type)
+- INDEX (entity_type, entity_id)
+
+FOREIGN KEYS:
+- user_id REFERENCES users(id) ON DELETE SET NULL
+
+
+TABLE: system_settings
+Description: Application configuration and settings
+--------------------------------------------------------------------------------
+Field                   Type            Constraints             Description
+--------------------------------------------------------------------------------
+id                      BIGINT          PRIMARY KEY, AUTO_INC   Setting ID
+setting_key             VARCHAR(100)    UNIQUE, NOT NULL        Setting key/name
+setting_value           TEXT            NULLABLE                Setting value
+setting_type            VARCHAR(50)     NOT NULL                Data type
+                                        (string, integer, 
+                                        boolean, json)
+category                VARCHAR(100)    NOT NULL                Setting category
+description             TEXT            NULLABLE                Setting description
+is_public               BOOLEAN         DEFAULT FALSE           Public access flag
+created_at              TIMESTAMP       NULLABLE                Record creation timestamp
+updated_at              TIMESTAMP       NULLABLE                Last update timestamp
+
+INDEXES:
+- PRIMARY KEY (id)
+- UNIQUE INDEX (setting_key)
+- INDEX (category)
+
+
+TABLE: categories
+Description: Dynamic categories for various modules
+--------------------------------------------------------------------------------
+Field                   Type            Constraints             Description
+--------------------------------------------------------------------------------
+id                      BIGINT          PRIMARY KEY, AUTO_INC   Category ID
+name                    VARCHAR(100)    NOT NULL                Category name
+type                    VARCHAR(100)    NOT NULL                Category type
+                                        (donation, document, 
+                                        event, etc.)
+description             TEXT            NULLABLE                Description
+parent_id               BIGINT          FOREIGN KEY, NULLABLE   Parent category ID
+sort_order              INTEGER         DEFAULT 0               Display order
+is_active               BOOLEAN         DEFAULT TRUE            Active status
+created_at              TIMESTAMP       NULLABLE                Record creation timestamp
+updated_at              TIMESTAMP       NULLABLE                Last update timestamp
+
+INDEXES:
+- PRIMARY KEY (id)
+- INDEX (type)
+- INDEX (parent_id)
+- INDEX (is_active)
+- INDEX (sort_order)
+
+FOREIGN KEYS:
+- parent_id REFERENCES categories(id) ON DELETE CASCADE
+
+
+TABLE: roles_permissions
+Description: Role-based permissions mapping
+--------------------------------------------------------------------------------
+Field                   Type            Constraints             Description
+--------------------------------------------------------------------------------
+id                      BIGINT          PRIMARY KEY, AUTO_INC   Permission ID
+role                    VARCHAR(50)     NOT NULL                User role
+                                        (admin, user, priest, 
+                                        accountant, church_admin)
+permission              VARCHAR(100)    NOT NULL                Permission name
+module                  VARCHAR(100)    NOT NULL                Module/feature
+can_view                BOOLEAN         DEFAULT FALSE           View permission
+can_create              BOOLEAN         DEFAULT FALSE           Create permission
+can_edit                BOOLEAN         DEFAULT FALSE           Edit permission
+can_delete              BOOLEAN         DEFAULT FALSE           Delete permission
+created_at              TIMESTAMP       NULLABLE                Record creation timestamp
+updated_at              TIMESTAMP       NULLABLE                Last update timestamp
+
+INDEXES:
+- PRIMARY KEY (id)
+- INDEX (role)
+- INDEX (module)
+- UNIQUE INDEX (role, permission, module)
+
+
+TABLE: cache
+Description: Application cache storage (Laravel default)
+--------------------------------------------------------------------------------
+Field                   Type            Constraints             Description
+--------------------------------------------------------------------------------
+key                     VARCHAR(255)    PRIMARY KEY             Cache key
+value                   MEDIUMTEXT      NOT NULL                Cache value
+expiration              INTEGER         NOT NULL                Expiration timestamp
+
+INDEXES:
+- PRIMARY KEY (key)
+
+
+TABLE: cache_locks
+Description: Cache locking mechanism (Laravel default)
+--------------------------------------------------------------------------------
+Field                   Type            Constraints             Description
+--------------------------------------------------------------------------------
+key                     VARCHAR(255)    PRIMARY KEY             Lock key
+owner                   VARCHAR(255)    NOT NULL                Lock owner
+expiration              INTEGER         NOT NULL                Expiration timestamp
+
+INDEXES:
+- PRIMARY KEY (key)
+
+
+TABLE: jobs
+Description: Job queue for background processing (Laravel default)
+--------------------------------------------------------------------------------
+Field                   Type            Constraints             Description
+--------------------------------------------------------------------------------
+id                      BIGINT          PRIMARY KEY, AUTO_INC   Job ID
+queue                   VARCHAR(255)    NOT NULL                Queue name
+payload                 LONGTEXT        NOT NULL                Job payload
+attempts                TINYINT         NOT NULL                Attempt count
+reserved_at             INTEGER         NULLABLE                Reserve timestamp
+available_at            INTEGER         NOT NULL                Available timestamp
+created_at              INTEGER         NOT NULL                Creation timestamp
+
+INDEXES:
+- PRIMARY KEY (id)
+- INDEX (queue)
+
+
+TABLE: job_batches
+Description: Batch job tracking (Laravel default)
+--------------------------------------------------------------------------------
+Field                   Type            Constraints             Description
+--------------------------------------------------------------------------------
+id                      VARCHAR(255)    PRIMARY KEY             Batch ID
+name                    VARCHAR(255)    NOT NULL                Batch name
+total_jobs              INTEGER         NOT NULL                Total jobs
+pending_jobs            INTEGER         NOT NULL                Pending jobs
+failed_jobs             INTEGER         NOT NULL                Failed jobs
+failed_job_ids          LONGTEXT        NOT NULL                Failed job IDs
+options                 MEDIUMTEXT      NULLABLE                Batch options
+cancelled_at            INTEGER         NULLABLE                Cancellation timestamp
+created_at              INTEGER         NOT NULL                Creation timestamp
+finished_at             INTEGER         NULLABLE                Finish timestamp
+
+INDEXES:
+- PRIMARY KEY (id)
+
+
+TABLE: failed_jobs
+Description: Failed job tracking (Laravel default)
+--------------------------------------------------------------------------------
+Field                   Type            Constraints             Description
+--------------------------------------------------------------------------------
+id                      BIGINT          PRIMARY KEY, AUTO_INC   Failed job ID
+uuid                    VARCHAR(255)    UNIQUE, NOT NULL        Job UUID
+connection              TEXT            NOT NULL                Connection name
+queue                   TEXT            NOT NULL                Queue name
+payload                 LONGTEXT        NOT NULL                Job payload
+exception               LONGTEXT        NOT NULL                Exception details
+failed_at               TIMESTAMP       DEFAULT CURRENT         Failure timestamp
+
+INDEXES:
+- PRIMARY KEY (id)
+- UNIQUE INDEX (uuid)
+
+
+================================================================================
+                        RELATIONSHIPS SUMMARY
+================================================================================
+
+KEY RELATIONSHIPS:
+------------------
+1. users/accounts → Has many: sessions, audit_logs, notifications, messages
+2. members → Has many: service_requests, billing_records, donations
+3. priests → Has many: schedules, baptism_records, marriage_records, 
+            confirmation_records, service_requests
+4. schedules → Belongs to: priest
+5. service_requests → Belongs to: member (requester), priest (assigned)
+6. donations → Belongs to: member (donor)
+7. documents/uploaded_files → Polymorphic relationships with multiple entities
+8. notifications → Belongs to: user
+9. audit_logs → Belongs to: user
+10. categories → Self-referential (parent-child)
+
+================================================================================
+                        DATA TYPES LEGEND
+================================================================================
+
+BIGINT              - Large integer (typically for IDs and foreign keys)
+VARCHAR(n)          - Variable-length string with max length n
+TEXT                - Variable-length text (larger than VARCHAR)
+LONGTEXT            - Very large text data
+MEDIUMTEXT          - Medium-length text data
+DATE                - Date value (YYYY-MM-DD)
+TIME                - Time value (HH:MM:SS)
+TIMESTAMP           - Date and time stamp
+DATETIME            - Date and time value
+DECIMAL(p,s)        - Fixed-point decimal (p=precision, s=scale)
+INTEGER/INT         - Standard integer
+TINYINT             - Small integer (-128 to 127)
+BOOLEAN             - True/false value
+ENUM                - Enumerated list of values
+JSON                - JSON formatted data
+
+================================================================================
+                        NAMING CONVENTIONS
+================================================================================
+
+Tables:             snake_case, plural (users, members, service_requests)
+Primary Keys:       id (BIGINT AUTO_INCREMENT)
+Foreign Keys:       {table_name}_id (e.g., user_id, priest_id)
+Timestamps:         created_at, updated_at (TIMESTAMP)
+Status Fields:      status (ENUM)
+Boolean Fields:     is_{property}, has_{property} (e.g., is_active, has_paid)
+Date Fields:        {event}_date (e.g., birth_date, marriage_date)
+
+================================================================================
+                        INDEXES & PERFORMANCE
+================================================================================
+
+PRIMARY KEYS:       All tables have auto-incrementing id as primary key
+UNIQUE INDEXES:     Applied to email fields, certificate numbers, receipt numbers
+FOREIGN KEY INDEXES: Automatically indexed for join performance
+DATE INDEXES:       Applied to frequently queried date fields
+STATUS INDEXES:     Applied to status and type enum fields
+FULLTEXT INDEXES:   Applied to searchable text fields (title, description, tags)
+COMPOSITE INDEXES:  Applied to frequently combined query fields
+
+================================================================================
+                        SECURITY CONSIDERATIONS
+================================================================================
+
+1. Password Storage:    Passwords stored using bcrypt hashing
+2. Email Verification:  email_verified_at timestamp tracks verification
+3. Two-Factor Auth:     Built-in 2FA support with Laravel Fortify
+4. Soft Deletes:        Consider implementing for critical tables
+5. Access Control:      Role-based permissions via roles_permissions table
+6. Audit Trail:         Comprehensive logging in audit_logs table
+7. Data Validation:     Enforced at application level and database constraints
+8. File Security:       Files stored outside public directory with controlled access
+
+================================================================================
+                        BACKUP & MAINTENANCE
+================================================================================
+
+RECOMMENDED BACKUP SCHEDULE:
+- Daily: Full database backup
+- Hourly: Transaction logs backup
+- Weekly: Full system backup including uploaded files
+
+MAINTENANCE TASKS:
+- Regular audit log cleanup (retain 1 year)
+- Archive old records (completed events, old notifications)
+- Optimize tables and rebuild indexes quarterly
+- Monitor database size and performance metrics
+- Review and update indexes based on query patterns
+
+================================================================================
+                        FUTURE ENHANCEMENTS
+================================================================================
+
+POTENTIAL ADDITIONS:
+1. ministry_groups - Church ministries and groups
+2. prayer_requests - Prayer request management
+3. volunteer_schedules - Volunteer management
+4. inventory - Church property and equipment inventory
+5. budget_planning - Budget and expense tracking
+6. pastoral_visits - Priest visit scheduling
+7. confession_schedules - Confession time management
+8. choir_members - Choir and music ministry
+9. catechism_classes - Religious education classes
+10. subscription_tiers - Tiered membership levels
+
+================================================================================
+                        DATABASE STATISTICS (ESTIMATED)
+================================================================================
+
+Total Tables:           45+
+Core Tables:            25
+Supporting Tables:      15
+System Tables:          5+
+Total Relationships:    40+
+Estimated Indexes:      100+
+
+================================================================================
+                        END OF DATABASE SCHEMA
+================================================================================
+Generated for: Church Management System "Record"
+Version: 1.0
+Last Updated: December 2, 2025
+Maintainer: System Development Team
+
+For questions or clarifications regarding this schema, please contact the
+development team or refer to the application documentation.
+================================================================================

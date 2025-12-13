@@ -5,6 +5,7 @@ import Sidebar from './Sidebar';
 
 const MainLayout = ({ userRole, onLogout }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const dropdownRef = useRef(null);
 
   // Close dropdown when clicking outside
@@ -23,14 +24,21 @@ const MainLayout = ({ userRole, onLogout }) => {
 
   return (
     <div className="flex min-h-screen">
-      {showSidebar && <Sidebar userRole={userRole} onLogout={onLogout} />}
+      {showSidebar && (
+        <Sidebar 
+          userRole={userRole} 
+          onLogout={onLogout} 
+          onCollapse={setSidebarCollapsed}
+        />
+      )}
       
-      <div id="main-content" className="flex-1 flex flex-col bg-gradient-to-br from-slate-50 to-blue-50 dark:from-gray-900 dark:to-gray-800">
+      <div 
+        id="main-content" 
+        className={`flex-1 flex flex-col transition-all duration-300 ${showSidebar ? (sidebarCollapsed ? 'ml-20' : 'ml-72') : ''} bg-white`}
+      >
         {/* Main Content Area */}
-        <main className="flex-1 p-6 animate-fade-in overflow-auto">
-          <div className="max-w-[1400px] mx-auto">
-            <Outlet />
-          </div>
+        <main className="flex-1 animate-fade-in overflow-auto pl-2">
+          <Outlet context={{ onLogout }} />
         </main>
       </div>
     </div>

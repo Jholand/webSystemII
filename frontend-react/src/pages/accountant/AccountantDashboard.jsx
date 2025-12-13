@@ -1,306 +1,493 @@
-import { useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import { 
-  DollarSign, 
-  TrendingUp, 
-  CreditCard, 
-  Clock,
-  Calendar,
-  PieChart,
-  Users,
-  AlertCircle,
-  ArrowUpRight,
-  ArrowDownRight
-} from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { DollarSign, FileText, TrendingUp, Tag, Plus, Download, BarChart3, Users, Calendar } from 'lucide-react';
+import { showInfoToast } from '../../utils/sweetAlertHelper';
+import { donationAPI, paymentRecordAPI, donationCategoryAPI } from '../../services/dataSync';
 
 const AccountantDashboard = () => {
-  const { user } = useAuth();
-  const [filterPeriod, setFilterPeriod] = useState('monthly');
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    todaysCollections: 0,
+    pendingReceipts: 0,
+    monthlyTotal: 0,
+    categoriesCount: 0,
+    weeklyCollection: 0,
+    avgDonation: 0,
+    totalDonors: 0,
+    totalDonationCount: 0
+  });
+  const [topCategories, setTopCategories] = useState([]);
+  const [dailyTrend, setDailyTrend] = useState([0, 0, 0, 0, 0, 0, 0]);
 
-  // Financial Overview Stats
-  const financialStats = [
-    { label: 'Total Revenue', value: '₱310,000', icon: DollarSign, change: '+12%', trend: 'up' },
-    { label: 'Collections Today', value: '₱8,200', icon: TrendingUp, change: '+5%', trend: 'up' },
-    { label: 'Pending Payments', value: '₱23,300', icon: AlertCircle, change: '-8%', trend: 'down' },
-    { label: 'Monthly Income', value: '₱285,000', icon: Calendar, change: '+18%', trend: 'up' },
-  ];
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
 
-  // Monthly Income Summary (6 months)
-  const monthlyIncomeSummary = [
-    { month: 'Jun', donations: 85000, collections: 62000, billing: 48000, total: 195000 },
-    { month: 'Jul', donations: 92000, collections: 68000, billing: 52000, total: 212000 },
-    { month: 'Aug', donations: 88000, collections: 71000, billing: 49000, total: 208000 },
-    { month: 'Sep', donations: 95000, collections: 75000, billing: 55000, total: 225000 },
-    { month: 'Oct', donations: 102000, collections: 80000, billing: 58000, total: 240000 },
-    { month: 'Nov', donations: 110000, collections: 118000, billing: 62000, total: 290000 },
-  ];
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      const [donationsRes, paymentsRes, categoriesRes] = await Promise.all([
+        donationAPI.getAll().catch(() => ({ data: [] })),
+        paymentRecordAPI.getAll().catch(() => ({ data: [] })),
+        donationCategoryAPI.getAll().catch(() => [])
+      ]);
 
-  // Donation Summary by Category
-  const donationBreakdown = {
-    daily: { 
-      tithes: 2500, 
-      offerings: 1200, 
-      buildingFund: 3000, 
-      specialCollection: 1500,
-      total: 8200 
-    },
-    weekly: { 
-      tithes: 18500, 
-      offerings: 8400, 
-      buildingFund: 12000, 
-      specialCollection: 10500,
-      total: 49400 
-    },
-    monthly: { 
-      tithes: 75000, 
-      offerings: 32000, 
-      buildingFund: 45000, 
-      specialCollection: 38000,
-      total: 190000 
-    },
+      // Extract data arrays from responses
+      const donations = donationsRes?.data || (Array.isArray(donationsRes) ? donationsRes : []);
+      const payments = paymentsRes?.data || (Array.isArray(paymentsRes) ? paymentsRes : []);
+      const categories = Array.isArray(categoriesRes?.data) ? categoriesRes.data : (Array.isArray(categoriesRes) ? categoriesRes : []);
+
+      console.log('Loaded data:', { donations: donations.length, payments: payments.length, categories: categories.length });
+
+      // Calculate stats
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayStr = today.toISOString().split('T')[0];
+      
+      // Today's collections (donations + payments)
+      const todayDonations = donations.filter(d => {
+        const donationDate = d.donation_date || d.created_at;
+        return donationDate?.startsWith(todayStr);
+      });
+      const todayPayments = payments.filter(p => {
+        const paymentDate = p.payment_date || p.created_at;
+        return paymentDate?.startsWith(todayStr);
+      });
+      const todaysTotal = todayDonations.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0) +
+                         todayPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+
+      // Weekly collections (last 7 days)
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      const weeklyDonations = donations.filter(d => {
+        const donationDate = new Date(d.donation_date || d.created_at);
+        return donationDate >= weekAgo;
+      });
+      const weeklyPayments = payments.filter(p => {
+        const paymentDate = new Date(p.payment_date || p.created_at);
+        return paymentDate >= weekAgo;
+      });
+      const weeklyTotal = weeklyDonations.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0) +
+                         weeklyPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+
+      // Monthly totals
+      const currentMonth = today.getMonth();
+      const currentYear = today.getFullYear();
+      const monthlyDonations = donations.filter(d => {
+        const donationDate = new Date(d.donation_date || d.created_at);
+        return donationDate.getMonth() === currentMonth && donationDate.getFullYear() === currentYear;
+      });
+      const monthlyPayments = payments.filter(p => {
+        const paymentDate = new Date(p.payment_date || p.created_at);
+        return paymentDate.getMonth() === currentMonth && paymentDate.getFullYear() === currentYear;
+      });
+      const monthlyTotal = monthlyDonations.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0) +
+                          monthlyPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+
+      // Pending receipts
+      const pendingPayments = payments.filter(p => p.status === 'pending' || p.status === 'Pending').length;
+
+      // Average donation
+      const totalDonationCount = monthlyDonations.length;
+      const avgDonation = totalDonationCount > 0 ? monthlyDonations.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0) / totalDonationCount : 0;
+
+      // Total unique donors this month
+      const uniqueDonors = new Set(monthlyDonations.map(d => d.donor_name || d.donor_id || d.user_id).filter(Boolean));
+
+      setStats({
+        todaysCollections: todaysTotal,
+        pendingReceipts: pendingPayments,
+        monthlyTotal: monthlyTotal,
+        categoriesCount: categories.length,
+        weeklyCollection: weeklyTotal,
+        avgDonation: avgDonation,
+        totalDonors: uniqueDonors.size,
+        totalDonationCount: totalDonationCount
+      });
+
+      // Calculate top categories
+      const categoryStats = categories.map(cat => {
+        const catDonations = donations.filter(d => 
+          d.donation_category_id === cat.id || 
+          d.category_id === cat.id || 
+          d.category === cat.name
+        );
+        const total = catDonations.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
+        return {
+          name: cat.name,
+          amount: total,
+          percentage: monthlyTotal > 0 ? Math.round((total / monthlyTotal) * 100) : 0
+        };
+      }).sort((a, b) => b.amount - a.amount).slice(0, 4);
+
+      setTopCategories(categoryStats);
+
+      // Calculate daily trend (last 7 days)
+      const last7Days = Array.from({ length: 7 }, (_, i) => {
+        const date = new Date();
+        date.setDate(date.getDate() - (6 - i));
+        return date.toISOString().split('T')[0];
+      });
+
+      const trend = last7Days.map(date => {
+        const dayDonations = donations.filter(d => (d.donation_date || d.created_at)?.startsWith(date));
+        const dayPayments = payments.filter(p => (p.payment_date || p.created_at)?.startsWith(date));
+        return dayDonations.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0) +
+               dayPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+      });
+
+      setDailyTrend(trend);
+
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const currentPeriodData = donationBreakdown[filterPeriod];
+  const handleExportDaily = () => {
+    showInfoToast('Exporting', 'Exporting daily report...');
+  };
 
-  // Recent Pending Payments
-  const pendingPayments = [
-    { id: 1, invoice: 'INV-003', client: 'Jose Garcia', service: 'Funeral Mass', amount: 8000, dueDate: '2025-11-25', daysOverdue: 0 },
-    { id: 2, invoice: 'INV-004', client: 'Anna Cruz', service: 'House Blessing', amount: 3000, dueDate: '2025-11-24', daysOverdue: 0 },
-    { id: 3, invoice: 'INV-005', client: 'Pedro Lopez', service: 'Wedding', amount: 12000, dueDate: '2025-11-23', daysOverdue: 0 },
-    { id: 4, invoice: 'INV-006', client: 'Rita Santos', service: 'Baptism', amount: 300, dueDate: '2025-11-22', daysOverdue: 1 },
+  const handleRecordDonation = () => {
+    navigate('/accountant/donations/new');
+  };
+
+  const statsDisplay = [
+    { label: "Total Collections", value: `₱${stats.monthlyTotal.toLocaleString()}`, icon: DollarSign, color: 'green' },
+    { label: 'Total Donations', value: stats.totalDonationCount, icon: FileText, color: 'blue' },
+    { label: 'Average Donation', value: `₱${Math.round(stats.avgDonation).toLocaleString()}`, icon: TrendingUp, color: 'purple' },
+    { label: 'Uncategorized', value: 0, icon: Tag, color: 'orange' },
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-100 p-8">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-white">
+      <div className="space-y-6">
         {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-1">
-            Financial Overview
-          </h1>
-          <p className="text-blue-900">Real-time monitoring and analytics of church financial operations</p>
-        </div>
-
-        {/* Financial Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-          {financialStats.map((stat, index) => (
-            <div 
-              key={index} 
-              className="group bg-white rounded-xl p-5 shadow-sm hover:shadow-lg transition-all duration-300 border border-blue-200/50 hover:border-blue-600/50"
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div className="p-2.5 bg-gradient-to-br from-black via-[#0A1628] to-[#1E3A8A] rounded-lg shadow-md group-hover:shadow-lg transition-shadow">
-                  <stat.icon size={22} className="text-white" />
-                </div>
-                <div className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">
-                  {stat.trend === 'up' ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />}
-                  {stat.change}
-                </div>
-              </div>
-              <div>
-                <p className="text-sm text-blue-900 mb-1.5 font-medium">{stat.label}</p>
-                <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Monthly Income Summary Chart */}
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-blue-200/50">
-          <div className="flex items-center justify-between mb-5">
+        <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
+          <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                <Calendar className="text-blue-900" size={20} />
-                Monthly Income Summary
-              </h2>
-              <p className="text-sm text-blue-900 mt-0.5">6-month revenue breakdown</p>
+              <h1 className="text-3xl font-bold" style={{ color: '#4158D0' }}>Accountant Dashboard</h1>
+              <p className="text-gray-600 text-sm mt-1">Financial management and donation tracking</p>
             </div>
-            <div className="flex gap-4 text-xs font-medium">
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-black"></div>
-                <span className="text-blue-900">Donations</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-[#1E3A8A]"></div>
-                <span className="text-blue-900">Collections</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-gray-900"></div>
-                <span className="text-blue-900">Billing</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            {monthlyIncomeSummary.map((month, index) => (
-              <div key={index} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-blue-900 w-12">{month.month}</span>
-                  <span className="text-sm font-bold text-gray-900">₱{month.total.toLocaleString()}</span>
-                </div>
-                <div className="flex gap-1 h-7 rounded-lg overflow-hidden bg-slate-100">
-                  <div 
-                    className="bg-black flex items-center justify-center text-xs font-semibold text-white hover:bg-[#0A1628] transition-colors"
-                    style={{ width: `${(month.donations / month.total) * 100}%` }}
-                    title={`Donations: ₱${month.donations.toLocaleString()}`}
-                  >
-                    {((month.donations / month.total) * 100).toFixed(0)}%
-                  </div>
-                  <div 
-                    className="bg-[#1E3A8A] flex items-center justify-center text-xs font-semibold text-white hover:bg-blue-800 transition-colors"
-                    style={{ width: `${(month.collections / month.total) * 100}%` }}
-                    title={`Collections: ₱${month.collections.toLocaleString()}`}
-                  >
-                    {((month.collections / month.total) * 100).toFixed(0)}%
-                  </div>
-                  <div 
-                    className="bg-gray-600 flex items-center justify-center text-xs font-semibold text-white hover:bg-gray-700 transition-colors"
-                    style={{ width: `${(month.billing / month.total) * 100}%` }}
-                    title={`Billing: ₱${month.billing.toLocaleString()}`}
-                  >
-                    {((month.billing / month.total) * 100).toFixed(0)}%
-                  </div>
-                </div>
-              </div>
-            ))}
+            <button 
+              onClick={handleExportDaily}
+              className="flex items-center gap-2 px-5 py-3 text-white rounded-lg shadow-lg hover:shadow-xl transition-all font-semibold"
+              style={{ 
+                background: 'linear-gradient(135deg, #4158D0 0%, #2563eb 100%)',
+                boxShadow: '0 4px 12px rgba(65, 88, 208, 0.3)'
+              }}
+            >
+              <Download size={18} />
+              Daily Report
+            </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Donation Summary */}
-          <div className="bg-white rounded-lg shadow-sm p-6 border border-slate-200">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                  <PieChart className="text-slate-700" size={20} />
-                  Donation Summary
-                </h2>
-                <p className="text-sm text-slate-600 mt-1">Breakdown by category</p>
-              </div>
-              <select
-                value={filterPeriod}
-                onChange={(e) => setFilterPeriod(e.target.value)}
-                className="px-3 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 bg-white text-sm font-medium"
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 relative">
+          {statsDisplay.map((stat, index) => {
+            const Icon = stat.icon;
+            return (
+              <div 
+                key={index}
+                className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all border border-gray-200 group relative overflow-hidden"
               >
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-              </select>
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-50 to-transparent rounded-full transform translate-x-12 -translate-y-12 opacity-50"></div>
+                <div className="relative flex items-start justify-between mb-4">
+                  <div className="p-3 rounded-xl shadow-lg transform group-hover:scale-110 transition-transform" style={{ 
+                    background: 'linear-gradient(135deg, #4158D0 0%, #2563eb 100%)',
+                    boxShadow: '0 4px 12px rgba(65, 88, 208, 0.3)'
+                  }}>
+                    <Icon className="text-white" size={24} />
+                  </div>
+                </div>
+                <div className="relative">
+                  <h3 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent mb-2">{stat.value}</h3>
+                  <p className="text-sm font-medium text-gray-600">{stat.label}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <button
+            onClick={handleRecordDonation}
+            className="rounded-lg p-6 hover:shadow-md transition-all group text-left border"
+            style={{ backgroundColor: '#E8E9F5', borderColor: '#D9DBEF' }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-lg transition-opacity group-hover:opacity-90" style={{ backgroundColor: '#4667CF' }}>
+                <Plus size={24} className="text-white" />
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900 text-lg">Record Walk-In Donation</p>
+                <p className="text-sm text-gray-600">Create new donation entry</p>
+              </div>
+            </div>
+          </button>
+
+          <button
+            onClick={handleExportDaily}
+            className="rounded-lg p-6 hover:shadow-md transition-all group text-left border"
+            style={{ backgroundColor: '#E8E9F5', borderColor: '#D9DBEF' }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-lg transition-opacity group-hover:opacity-90" style={{ backgroundColor: '#4667CF' }}>
+                <Download size={24} className="text-white" />
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900 text-lg">Export Daily Report</p>
+                <p className="text-sm text-gray-600">Download today's collections</p>
+              </div>
+            </div>
+          </button>
+        </div>
+
+        {/* Analytics Section */}
+        <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-lg relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-50 to-transparent rounded-full transform translate-x-32 -translate-y-32 opacity-40"></div>
+          <div className="relative">
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg shadow-lg" style={{ 
+                  background: 'linear-gradient(135deg, #4158D0 0%, #2563eb 100%)',
+                  boxShadow: '0 4px 12px rgba(65, 88, 208, 0.3)'
+                }}>
+                  <BarChart3 size={20} className="text-white" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900">
+                  Financial Analytics
+                </h3>
+              </div>
             </div>
 
-            <div className="space-y-4">
-              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-semibold text-slate-700">Tithes</span>
-                  <span className="text-lg font-bold text-slate-900">₱{currentPeriodData.tithes.toLocaleString()}</span>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <div className="p-5 rounded-xl bg-white border-2 border-blue-100 hover:border-blue-200 shadow-sm hover:shadow-md transition-all">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 rounded-lg" style={{ background: 'rgba(65, 88, 208, 0.1)' }}>
+                    <TrendingUp size={18} style={{ color: '#4158D0' }} />
+                  </div>
+                  <p className="text-sm font-semibold text-gray-700">Weekly Collection</p>
                 </div>
-                <div className="w-full bg-slate-200 rounded-full h-2">
-                  <div 
-                    className="h-full bg-blue-500 rounded-full"
-                    style={{ width: `${(currentPeriodData.tithes / currentPeriodData.total) * 100}%` }}
-                  />
-                </div>
-                <p className="text-xs text-slate-600 mt-1">{((currentPeriodData.tithes / currentPeriodData.total) * 100).toFixed(1)}% of total</p>
+                <p className="text-3xl font-bold" style={{ color: '#4158D0' }}>₱{stats.weeklyCollection.toLocaleString()}</p>
+                <p className="text-xs mt-2 text-gray-600 font-medium">Last 7 days</p>
               </div>
-
-              <div className="p-4 bg-gray-100 rounded-lg border border-gray-200">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-semibold text-slate-700">Offerings</span>
-                  <span className="text-lg font-bold text-slate-900">₱{currentPeriodData.offerings.toLocaleString()}</span>
+              
+              <div className="p-5 rounded-xl bg-white border-2 border-green-100 hover:border-green-200 shadow-sm hover:shadow-md transition-all">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 rounded-lg" style={{ background: 'rgba(16, 185, 129, 0.1)' }}>
+                    <DollarSign size={18} style={{ color: '#10b981' }} />
+                  </div>
+                  <p className="text-sm font-semibold text-gray-700">Avg. Donation</p>
                 </div>
-                <div className="w-full bg-slate-200 rounded-full h-2">
-                  <div 
-                    className="h-full bg-gray-600 rounded-full"
-                    style={{ width: `${(currentPeriodData.offerings / currentPeriodData.total) * 100}%` }}
-                  />
-                </div>
-                <p className="text-xs text-slate-600 mt-1">{((currentPeriodData.offerings / currentPeriodData.total) * 100).toFixed(1)}% of total</p>
+                <p className="text-3xl font-bold" style={{ color: '#10b981' }}>₱{Math.round(stats.avgDonation).toLocaleString()}</p>
+                <p className="text-xs mt-2 text-gray-600 font-medium">Per donation</p>
               </div>
-
-              <div className="p-4 bg-gray-100 rounded-lg border border-gray-200">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-semibold text-slate-700">Building Fund</span>
-                  <span className="text-lg font-bold text-slate-900">₱{currentPeriodData.buildingFund.toLocaleString()}</span>
+              
+              <div className="p-5 rounded-xl bg-white border-2 border-cyan-100 hover:border-cyan-200 shadow-sm hover:shadow-md transition-all">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 rounded-lg" style={{ background: 'rgba(6, 182, 212, 0.1)' }}>
+                    <Users size={18} style={{ color: '#06b6d4' }} />
+                  </div>
+                  <p className="text-sm font-semibold text-gray-700">Total Donors</p>
                 </div>
-                <div className="w-full bg-slate-200 rounded-full h-2">
-                  <div 
-                    className="h-full bg-gray-600 rounded-full"
-                    style={{ width: `${(currentPeriodData.buildingFund / currentPeriodData.total) * 100}%` }}
-                  />
-                </div>
-                <p className="text-xs text-slate-600 mt-1">{((currentPeriodData.buildingFund / currentPeriodData.total) * 100).toFixed(1)}% of total</p>
+                <p className="text-3xl font-bold" style={{ color: '#06b6d4' }}>{stats.totalDonors}</p>
+                <p className="text-xs mt-2 text-gray-600 font-medium">Active this month</p>
               </div>
+            </div>
 
-              <div className="p-4 bg-gray-100 rounded-lg border border-gray-200">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-semibold text-slate-700">Special Collection</span>
-                  <span className="text-lg font-bold text-slate-900">₱{currentPeriodData.specialCollection.toLocaleString()}</span>
-                </div>
-                <div className="w-full bg-slate-200 rounded-full h-2">
-                  <div 
-                    className="h-full bg-gray-600 rounded-full"
-                    style={{ width: `${(currentPeriodData.specialCollection / currentPeriodData.total) * 100}%` }}
-                  />
-                </div>
-                <p className="text-xs text-slate-600 mt-1">{((currentPeriodData.specialCollection / currentPeriodData.total) * 100).toFixed(1)}% of total</p>
-              </div>
-
-              <div className="pt-4 border-t-2 border-slate-300">
-                <div className="flex justify-between items-center">
-                  <span className="text-base font-bold text-slate-900">Total</span>
-                  <span className="text-2xl font-bold text-slate-900">
-                    ₱{currentPeriodData.total.toLocaleString()}
-                  </span>
-                </div>
+            {/* Donation Trend Chart */}
+            <div className="p-6 border rounded-xl bg-gradient-to-br from-blue-50/30 to-gray-50/30 shadow-inner" style={{ borderColor: '#E0E7FF' }}>
+              <p className="text-base font-bold mb-4 text-gray-900">Daily Collection Trend (Last 7 Days)</p>
+              <div className="h-40 flex items-end justify-between gap-3">
+                {dailyTrend.map((amount, i) => {
+                  const maxAmount = Math.max(...dailyTrend, 1);
+                  const height = (amount / maxAmount) * 100;
+                  const gradients = [
+                    'from-purple-500 to-purple-600',
+                    'from-blue-500 to-blue-600',
+                    'from-indigo-500 to-indigo-600',
+                    'from-violet-500 to-violet-600',
+                    'from-purple-500 to-blue-600',
+                    'from-blue-500 to-indigo-600',
+                    'from-indigo-500 to-purple-600'
+                  ];
+                  return (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-2">
+                      <div 
+                        className={`w-full rounded-t-xl transition-all hover:scale-105 relative group shadow-lg bg-gradient-to-b ${gradients[i]}`}
+                        style={{ 
+                          height: `${height}%`,
+                          minHeight: '8px'
+                        }}
+                      >
+                        <span className="absolute -top-7 left-1/2 transform -translate-x-1/2 text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity bg-white px-2 py-1 rounded shadow-md text-purple-600">
+                          ₱{(amount/1000).toFixed(1)}k
+                        </span>
+                      </div>
+                      <span className="text-xs font-medium text-purple-600">
+                        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i]}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Pending Payments */}
-          <div className="bg-white rounded-lg shadow-sm p-6 border border-slate-200">
-            <div className="mb-6">
-              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                <AlertCircle className="text-amber-600" size={20} />
-                Pending Payments
-              </h2>
-              <p className="text-sm text-slate-600 mt-1">Outstanding invoices requiring attention</p>
+        {/* Top Donation Categories with Pie Chart */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Pie Chart */}
+          <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Donation Distribution</h3>
+            <div className="flex items-center justify-center">
+              <div className="relative w-48 h-48">
+                <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
+                  <defs>
+                    <linearGradient id="pie-grad-1" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#4667CF" />
+                      <stop offset="100%" stopColor="#5777DF" />
+                    </linearGradient>
+                    <linearGradient id="pie-grad-2" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#879BDA" />
+                      <stop offset="100%" stopColor="#98ACE5" />
+                    </linearGradient>
+                    <linearGradient id="pie-grad-3" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#BEC4E0" />
+                      <stop offset="100%" stopColor="#CFD5EB" />
+                    </linearGradient>
+                    <linearGradient id="pie-grad-4" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#D9DBEF" />
+                      <stop offset="100%" stopColor="#E8E9F5" />
+                    </linearGradient>
+                  </defs>
+                  
+                  {/* Tithes - 35% */}
+                  <circle
+                    cx="50" cy="50" r="40"
+                    fill="none"
+                    stroke="url(#pie-grad-1)"
+                    strokeWidth="20"
+                    strokeDasharray="87.96 251.33"
+                    strokeDashoffset="0"
+                  />
+                  {/* Mass Offerings - 30% */}
+                  <circle
+                    cx="50" cy="50" r="40"
+                    fill="none"
+                    stroke="url(#pie-grad-2)"
+                    strokeWidth="20"
+                    strokeDasharray="75.4 251.33"
+                    strokeDashoffset="-87.96"
+                  />
+                  {/* Special Collections - 20% */}
+                  <circle
+                    cx="50" cy="50" r="40"
+                    fill="none"
+                    stroke="url(#pie-grad-3)"
+                    strokeWidth="20"
+                    strokeDasharray="50.27 251.33"
+                    strokeDashoffset="-163.36"
+                  />
+                  {/* Others - 15% */}
+                  <circle
+                    cx="50" cy="50" r="40"
+                    fill="none"
+                    stroke="url(#pie-grad-4)"
+                    strokeWidth="20"
+                    strokeDasharray="37.7 251.33"
+                    strokeDashoffset="-213.63"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <p className="text-2xl font-bold" style={{ color: '#4667CF' }}>₱186K</p>
+                  <p className="text-xs" style={{ color: '#879BDA' }}>Total</p>
+                </div>
+              </div>
             </div>
-
-            <div className="space-y-3">
-              {pendingPayments.map((payment) => (
-                <div 
-                  key={payment.id}
-                  className="p-4 border border-slate-200 rounded-lg hover:border-slate-300 hover:shadow-sm transition-all"
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <p className="font-semibold text-slate-900">{payment.client}</p>
-                      <p className="text-xs text-slate-600">{payment.invoice} • {payment.service}</p>
-                    </div>
-                    <span className="text-lg font-bold text-gray-900">₱{payment.amount.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-slate-600">Due: {payment.dueDate}</span>
-                    {payment.daysOverdue > 0 ? (
-                      <span className="bg-gray-200 text-gray-700 font-semibold px-2 py-1 rounded border border-gray-300">
-                        {payment.daysOverdue} day(s) overdue
-                      </span>
-                    ) : (
-                      <span className="bg-gray-100 text-gray-600 font-semibold px-2 py-1 rounded border border-gray-200">
-                        Pending
-                      </span>
-                    )}
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              {[
+                { name: 'Tithes', percent: '35%', color: '#4667CF' },
+                { name: 'Mass Offerings', percent: '30%', color: '#879BDA' },
+                { name: 'Special Collections', percent: '20%', color: '#BEC4E0' },
+                { name: 'Others', percent: '15%', color: '#D9DBEF' }
+              ].map((item, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-700">{item.name}</p>
+                    <p className="text-xs font-bold" style={{ color: item.color }}>{item.percent}</p>
                   </div>
                 </div>
               ))}
             </div>
+          </div>
 
-            <div className="mt-4 pt-4 border-t border-slate-200">
+          {/* Category Bars */}
+          <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Categories (This Month)</h3>
+            <div className="space-y-4">
+              {topCategories.map((category, index) => (
+                <div key={index}>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium text-gray-900">{category.name}</span>
+                    <span className="text-sm font-bold text-gray-900">₱{category.amount.toLocaleString()}</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="h-2 rounded-full transition-all duration-500"
+                      style={{ 
+                        width: `${category.percentage}%`,
+                        backgroundColor: '#4667CF'
+                      }}
+                    ></div>
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">{category.percentage}% of total</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Recent Activity Summary */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Today's Summary</h3>
+            <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-sm font-semibold text-slate-700">Total Outstanding:</span>
-                <span className="text-xl font-bold text-gray-900">
-                  ₱{pendingPayments.reduce((sum, p) => sum + p.amount, 0).toLocaleString()}
-                </span>
+                <span className="text-sm text-gray-600">Total Collections</span>
+                <span className="text-lg font-bold text-gray-900">₱8,250</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Transactions</span>
+                <span className="text-lg font-bold text-gray-900">12</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Average Donation</span>
+                <span className="text-lg font-bold text-gray-900">₱688</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">This Month</h3>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Total Revenue</span>
+                <span className="text-lg font-bold text-gray-900">₱185,750</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Total Donors</span>
+                <span className="text-lg font-bold text-gray-900">234</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Growth</span>
+                <span className="text-lg font-bold text-green-600">+12%</span>
               </div>
             </div>
           </div>
@@ -311,3 +498,4 @@ const AccountantDashboard = () => {
 };
 
 export default AccountantDashboard;
+

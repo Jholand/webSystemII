@@ -1,9 +1,17 @@
 import { useState, useEffect } from 'react';
 import { Megaphone, Plus, Edit, Trash2, Eye, X, AlertCircle, Info, CheckCircle } from 'lucide-react';
 import ModalOverlay from '../../components/ModalOverlay';
+import { announcementService } from '../../services/extendedChurchService';
+import { showSuccessToast, showErrorToast, showDeleteConfirm } from '../../utils/sweetAlertHelper';
 
 const Announcements = () => {
   const [showModal, setShowModal] = useState(false);
+  const [announcements, setAnnouncements] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetchAnnouncements();
+  }, []);
 
   useEffect(() => {
     if (showModal) {
@@ -18,6 +26,20 @@ const Announcements = () => {
       if (sidebar) sidebar.style.display = '';
     }
   }, [showModal]);
+
+  const fetchAnnouncements = async () => {
+    try {
+      setLoading(true);
+      const data = await announcementService.getAll();
+      setAnnouncements(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error fetching announcements:', error);
+      showErrorToast('Error', 'Failed to load announcements');
+      setAnnouncements([]);
+    } finally {
+      setLoading(false);
+    }
+  };
   const [modalMode, setModalMode] = useState('add');
   const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
   const [formData, setFormData] = useState({
@@ -29,80 +51,7 @@ const Announcements = () => {
     targetAudience: 'All Members'
   });
 
-  const announcements = [
-    {
-      id: 1,
-      title: 'Christmas Mass Schedule 2025',
-      type: 'Event',
-      content: 'Join us for our Christmas celebrations! Masses will be held on Dec 24 at 6:00 PM, 9:00 PM, and 12:00 AM. Dec 25 masses at 6:00 AM, 8:00 AM, 10:00 AM, and 6:00 PM.',
-      priority: 'High',
-      postedDate: '2025-11-20',
-      postedBy: 'Fr. Joseph Smith',
-      validUntil: '2025-12-25',
-      status: 'Active',
-      targetAudience: 'All Members'
-    },
-    {
-      id: 2,
-      title: 'Youth Ministry Retreat Registration Open',
-      type: 'Ministry',
-      content: 'Registration for the Youth Ministry Winter Retreat (Dec 10-12) is now open. Limited slots available. Fee: ₱2,500. Contact the parish office to register.',
-      priority: 'Normal',
-      postedDate: '2025-11-18',
-      postedBy: 'Ana Garcia',
-      validUntil: '2025-12-05',
-      status: 'Active',
-      targetAudience: 'Youth Ministry'
-    },
-    {
-      id: 3,
-      title: 'Church Renovation Update',
-      type: 'General',
-      content: 'The church renovation project is 75% complete. Side chapel will be temporarily closed Nov 25-30. We apologize for any inconvenience.',
-      priority: 'High',
-      postedDate: '2025-11-15',
-      postedBy: 'John Dela Cruz',
-      validUntil: '2025-11-30',
-      status: 'Active',
-      targetAudience: 'All Members'
-    },
-    {
-      id: 4,
-      title: 'Volunteer Appreciation Day',
-      type: 'Event',
-      content: 'Thank you to all our volunteers! Join us for Volunteer Appreciation Day on Nov 28 at 2:00 PM in the Parish Hall. Light refreshments will be served.',
-      priority: 'Normal',
-      postedDate: '2025-11-12',
-      postedBy: 'Maria Santos',
-      validUntil: '2025-11-28',
-      status: 'Active',
-      targetAudience: 'Volunteers'
-    },
-    {
-      id: 5,
-      title: 'Updated Parish Office Hours',
-      type: 'Administrative',
-      content: 'Starting Dec 1, parish office hours will be Mon-Sat 8:00 AM - 5:00 PM, closed Sundays. For emergencies, call the rectory hotline.',
-      priority: 'Normal',
-      postedDate: '2025-11-10',
-      postedBy: 'Maria Santos',
-      validUntil: '2025-12-01',
-      status: 'Active',
-      targetAudience: 'All Members'
-    },
-    {
-      id: 6,
-      title: 'Charity Drive Success',
-      type: 'General',
-      content: 'Thank you for your generous donations! Our recent charity drive collected over ₱150,000 worth of goods and donations for typhoon victims.',
-      priority: 'Low',
-      postedDate: '2025-11-05',
-      postedBy: 'Ana Garcia',
-      validUntil: '2025-11-25',
-      status: 'Expired',
-      targetAudience: 'All Members'
-    },
-  ];
+
 
   const announcementTypes = ['General', 'Event', 'Ministry', 'Administrative', 'Emergency'];
   const priorities = ['Low', 'Normal', 'High', 'Urgent'];
@@ -127,10 +76,39 @@ const Announcements = () => {
     setShowModal(true);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Announcement submitted:', formData);
-    setShowModal(false);
+    try {
+      setLoading(true);
+      if (modalMode === 'add') {
+        await announcementService.create(formData);
+        showSuccessToast('Success!', 'Announcement created successfully');
+      } else if (modalMode === 'edit') {
+        await announcementService.update(selectedAnnouncement.id, formData);
+        showSuccessToast('Success!', 'Announcement updated successfully');
+      }
+      setShowModal(false);
+      await fetchAnnouncements();
+    } catch (error) {
+      console.error('Error saving announcement:', error);
+      showErrorToast('Error', 'Failed to save announcement');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    const result = await showDeleteConfirm('Delete Announcement?', 'This action cannot be undone!');
+    if (result.isConfirmed) {
+      try {
+        await announcementService.delete(id);
+        showSuccessToast('Deleted!', 'Announcement has been deleted successfully');
+        await fetchAnnouncements();
+      } catch (error) {
+        console.error('Error deleting announcement:', error);
+        showErrorToast('Error', 'Failed to delete announcement');
+      }
+    }
   };
 
   const getPriorityIcon = (priority) => {
@@ -168,81 +146,66 @@ const Announcements = () => {
   const expiredAnnouncements = announcements.filter(a => a.status === 'Expired');
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-gray-100 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-white">
+      <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Announcements</h1>
-            <p className="text-blue-900 mt-1">Internal parish announcements and updates</p>
+        <div className="px-6 py-5 border-b border-gray-200 bg-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold mb-1" style={{ color: '#4158D0' }}>Announcements</h1>
+              <p className="text-gray-600 text-sm">Internal parish announcements and updates</p>
+            </div>
+            <button 
+              onClick={() => handleOpenModal('add')}
+              className="flex items-center gap-2 px-6 py-3 text-white rounded-lg font-semibold hover:opacity-90 transition-all shadow-lg"
+              style={{ 
+                background: 'linear-gradient(135deg, #4158D0 0%, #2563eb 100%)',
+                boxShadow: '0 4px 12px rgba(65, 88, 208, 0.3)'
+              }}
+            >
+              <Plus size={18} />
+              New Announcement
+            </button>
           </div>
-          <button 
-            onClick={() => handleOpenModal('add')}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-br from-black via-[#0A1628] to-[#1E3A8A] text-white rounded-xl hover:from-[#1E3A8A] hover:to-blue-700 transition-all shadow-lg hover:shadow-blue-900/50"
-          >
-            <Plus size={20} />
-            New Announcement
-          </button>
         </div>
 
-        {/* Stats */}
+        {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-blue-200/50">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-blue-900 text-sm">Total</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{announcements.length}</p>
+          {[
+            { label: 'Total Announcements', value: announcements.length, icon: Megaphone, color: '#4158D0' },
+            { label: 'Active', value: activeAnnouncements.length, icon: CheckCircle, color: '#10b981' },
+            { label: 'High Priority', value: announcements.filter(a => a.priority === 'High' || a.priority === 'Urgent').length, icon: AlertCircle, color: '#ef4444' },
+            { label: 'Expired', value: expiredAnnouncements.length, icon: Info, color: '#6b7280' }
+          ].map((stat, index) => {
+            const Icon = stat.icon;
+            return (
+              <div key={index} className="bg-white rounded-lg p-5 shadow hover:shadow-lg transition-all border border-gray-200 cursor-pointer group">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="p-3 rounded-lg group-hover:scale-110 transition-transform" style={{ backgroundColor: stat.color + '20' }}>
+                    <Icon style={{ color: stat.color }} size={24} />
+                  </div>
+                  <Icon size={16} className="text-gray-400" />
+                </div>
+                <h3 className="text-3xl font-bold text-gray-900 mb-1">{stat.value}</h3>
+                <p className="text-sm font-semibold text-gray-700">{stat.label}</p>
               </div>
-              <div className="p-3 bg-gradient-to-br from-black via-[#0A1628] to-[#1E3A8A] rounded-xl">
-                <Megaphone className="text-white" size={24} />
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-blue-200/50">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-blue-900 text-sm">Active</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{activeAnnouncements.length}</p>
-              </div>
-              <div className="p-3 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl">
-                <CheckCircle className="text-white" size={24} />
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-blue-200/50">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-blue-900 text-sm">High Priority</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{announcements.filter(a => a.priority === 'High' || a.priority === 'Urgent').length}</p>
-              </div>
-              <div className="p-3 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl">
-                <AlertCircle className="text-white" size={24} />
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-blue-200/50">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-blue-900 text-sm">This Week</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">4</p>
-              </div>
-              <div className="p-3 bg-gradient-to-br from-black via-[#0A1628] to-[#1E3A8A] rounded-xl">
-                <Megaphone className="text-white" size={24} />
-              </div>
-            </div>
-          </div>
+            );
+          })}
         </div>
 
         {/* Active Announcements */}
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Active Announcements</h3>
+          <h3 className="text-xl font-bold mb-4" style={{ color: '#4158D0' }}>Active Announcements</h3>
           <div className="space-y-4">
             {activeAnnouncements.map(announcement => (
-              <div key={announcement.id} className={`bg-white rounded-xl shadow-sm border-2 p-6 ${getPriorityColor(announcement.priority)}`}>
+              <div key={announcement.id} className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all border border-gray-200 p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-start gap-4 flex-1">
-                    <div className="p-3 bg-gradient-to-br from-black via-[#0A1628] to-[#1E3A8A] rounded-xl">
-                      <Megaphone className="text-white" size={24} />
+                    <div className="p-3 rounded-xl shadow-lg" style={{ 
+                      background: 'linear-gradient(135deg, #4158D0 0%, #2563eb 100%)',
+                      boxShadow: '0 4px 12px rgba(65, 88, 208, 0.3)'
+                    }}>
+                      <Megaphone className="text-white" size={20} />
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
@@ -276,7 +239,10 @@ const Announcements = () => {
                     >
                       <Edit size={18} />
                     </button>
-                    <button className="p-2 text-rose-600 hover:bg-rose-100 rounded-lg transition-colors">
+                    <button 
+                      onClick={() => handleDelete(announcement.id)}
+                      className="p-2 text-rose-600 hover:bg-rose-100 rounded-lg transition-colors"
+                    >
                       <Trash2 size={18} />
                     </button>
                   </div>
@@ -289,16 +255,19 @@ const Announcements = () => {
         {/* Expired Announcements */}
         {expiredAnnouncements.length > 0 && (
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Expired Announcements</h3>
+            <h3 className="text-lg font-semibold mb-4" style={{ color: '#4667CF' }}>Expired Announcements</h3>
             <div className="space-y-3">
               {expiredAnnouncements.map(announcement => (
-                <div key={announcement.id} className="bg-gray-50 rounded-xl shadow-sm border border-gray-200 p-4 opacity-60">
+                <div key={announcement.id} className="bg-gray-50 rounded-lg shadow border border-gray-200 p-4 opacity-60">
                   <div className="flex items-center justify-between">
                     <div>
                       <h4 className="font-semibold text-gray-900">{announcement.title}</h4>
                       <p className="text-sm text-gray-600 mt-1">Expired on {announcement.validUntil}</p>
                     </div>
-                    <button className="p-2 text-rose-600 hover:bg-rose-100 rounded-lg transition-colors">
+                    <button 
+                      onClick={() => handleDelete(announcement.id)}
+                      className="p-2 text-rose-600 hover:bg-rose-100 rounded-lg transition-colors"
+                    >
                       <Trash2 size={18} />
                     </button>
                   </div>
@@ -458,7 +427,8 @@ const Announcements = () => {
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-2 bg-gradient-to-br from-black via-[#0A1628] to-[#1E3A8A] text-white rounded-lg hover:from-[#1E3A8A] hover:to-blue-700 transition-all shadow-lg hover:shadow-blue-900/50"
+                    className="px-6 py-2 text-white rounded-lg hover:opacity-90 transition-all shadow-lg"
+                    style={{ backgroundColor: '#4158D0' }}
                   >
                     {modalMode === 'add' ? 'Create Announcement' : 'Save Changes'}
                   </button>

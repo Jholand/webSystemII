@@ -1,11 +1,19 @@
 import { useState, useEffect } from 'react';
 import { Upload, FileText, Download, Eye, Trash2, Filter, Search, X } from 'lucide-react';
 import ModalOverlay from '../../components/ModalOverlay';
+import { documentService } from '../../services/extendedChurchService';
+import { showSuccessToast, showErrorToast, showDeleteConfirm } from '../../utils/sweetAlertHelper';
 
 const Documents = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [documents, setDocuments] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetchDocuments();
+  }, []);
 
   useEffect(() => {
     if (showUploadModal) {
@@ -20,6 +28,20 @@ const Documents = () => {
       if (sidebar) sidebar.style.display = '';
     }
   }, [showUploadModal]);
+
+  const fetchDocuments = async () => {
+    try {
+      setLoading(true);
+      const data = await documentService.getAll();
+      setDocuments(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error fetching documents:', error);
+      showErrorToast('Error', 'Failed to load documents');
+      setDocuments([]);
+    } finally {
+      setLoading(false);
+    }
+  };
   const [formData, setFormData] = useState({
     title: '',
     type: '',
@@ -27,18 +49,7 @@ const Documents = () => {
     file: null
   });
 
-  const documents = [
-    { id: 1, title: 'Baptism Certificate Template', type: 'Certificate', uploadDate: '2025-11-20', size: '2.5 MB', uploadedBy: 'Maria Santos' },
-    { id: 2, title: 'Wedding Certificate Template', type: 'Certificate', uploadDate: '2025-11-18', size: '2.8 MB', uploadedBy: 'Maria Santos' },
-    { id: 3, title: 'Confirmation Certificate Template', type: 'Certificate', uploadDate: '2025-11-15', size: '2.6 MB', uploadedBy: 'Maria Santos' },
-    { id: 4, title: 'Service Request Form', type: 'Form', uploadDate: '2025-11-10', size: '1.2 MB', uploadedBy: 'John Dela Cruz' },
-    { id: 5, title: 'Membership Application Form', type: 'Form', uploadDate: '2025-11-05', size: '1.5 MB', uploadedBy: 'John Dela Cruz' },
-    { id: 6, title: 'Volunteer Registration Form', type: 'Form', uploadDate: '2025-11-01', size: '1.3 MB', uploadedBy: 'Ana Garcia' },
-    { id: 7, title: 'Parish Guidelines 2025', type: 'Guidelines', uploadDate: '2025-10-25', size: '5.4 MB', uploadedBy: 'Fr. Joseph Smith' },
-    { id: 8, title: 'Event Planning Checklist', type: 'Template', uploadDate: '2025-10-20', size: '800 KB', uploadedBy: 'Ana Garcia' },
-    { id: 9, title: 'Monthly Report Template', type: 'Template', uploadDate: '2025-10-15', size: '1.1 MB', uploadedBy: 'Maria Santos' },
-    { id: 10, title: 'Church History Document', type: 'Record', uploadDate: '2025-10-10', size: '12.3 MB', uploadedBy: 'Fr. Joseph Smith' },
-  ];
+
 
   const documentTypes = ['Certificate', 'Form', 'Guidelines', 'Template', 'Record', 'Policy'];
 
@@ -48,10 +59,34 @@ const Documents = () => {
     return matchesSearch && matchesFilter;
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Upload submitted:', formData);
-    setShowUploadModal(false);
+    try {
+      setLoading(true);
+      await documentService.create(formData);
+      showSuccessToast('Success!', 'Document uploaded successfully');
+      setShowUploadModal(false);
+      await fetchDocuments();
+    } catch (error) {
+      console.error('Error uploading document:', error);
+      showErrorToast('Error', 'Failed to upload document');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    const result = await showDeleteConfirm('Delete Document?', 'This action cannot be undone!');
+    if (result.isConfirmed) {
+      try {
+        await documentService.delete(id);
+        showSuccessToast('Deleted!', 'Document has been deleted successfully');
+        await fetchDocuments();
+      } catch (error) {
+        console.error('Error deleting document:', error);
+        showErrorToast('Error', 'Failed to delete document');
+      }
+    }
   };
 
   const getTypeColor = (type) => {
@@ -67,73 +102,55 @@ const Documents = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-gray-100 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-white">
+      <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Documents</h1>
-            <p className="text-blue-900 mt-1">Manage church documents and certificates</p>
+        <div className="px-6 py-5 border-b border-gray-200 bg-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold mb-1" style={{ color: '#4158D0' }}>Documents</h1>
+              <p className="text-gray-600 text-sm">Manage church documents and certificates</p>
+            </div>
+            <button 
+              onClick={() => setShowUploadModal(true)}
+              className="flex items-center gap-2 px-6 py-3 text-white rounded-lg font-semibold hover:opacity-90 transition-all shadow-lg"
+              style={{ 
+                background: 'linear-gradient(135deg, #4158D0 0%, #2563eb 100%)',
+                boxShadow: '0 4px 12px rgba(65, 88, 208, 0.3)'
+              }}
+            >
+              <Upload size={18} />
+              Upload Document
+            </button>
           </div>
-          <button 
-            onClick={() => setShowUploadModal(true)}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-br from-black via-[#0A1628] to-[#1E3A8A] text-white rounded-xl hover:from-[#1E3A8A] hover:to-blue-700 transition-all shadow-lg hover:shadow-blue-900/50"
-          >
-            <Upload size={20} />
-            Upload Document
-          </button>
         </div>
 
-        {/* Stats */}
+        {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-blue-200/50">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-blue-900 text-sm">Total Documents</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{documents.length}</p>
+          {[
+            { label: 'Total Documents', value: documents.length, icon: FileText, color: '#4158D0' },
+            { label: 'Certificates', value: documents.filter(d => d.type === 'Certificate').length, icon: FileText, color: '#10b981' },
+            { label: 'Forms', value: documents.filter(d => d.type === 'Form').length, icon: FileText, color: '#f59e0b' },
+            { label: 'Templates', value: documents.filter(d => d.type === 'Template').length, icon: FileText, color: '#8b5cf6' }
+          ].map((stat, index) => {
+            const Icon = stat.icon;
+            return (
+              <div key={index} className="bg-white rounded-lg p-5 shadow hover:shadow-lg transition-all border border-gray-200 cursor-pointer group">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="p-3 rounded-lg group-hover:scale-110 transition-transform" style={{ backgroundColor: stat.color + '20' }}>
+                    <Icon style={{ color: stat.color }} size={24} />
+                  </div>
+                  <Icon size={16} className="text-gray-400" />
+                </div>
+                <h3 className="text-3xl font-bold text-gray-900 mb-1">{stat.value}</h3>
+                <p className="text-sm font-semibold text-gray-700">{stat.label}</p>
               </div>
-              <div className="p-3 bg-gradient-to-br from-black via-[#0A1628] to-[#1E3A8A] rounded-xl">
-                <FileText className="text-white" size={24} />
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-blue-200/50">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-blue-900 text-sm">Certificates</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{documents.filter(d => d.type === 'Certificate').length}</p>
-              </div>
-              <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl">
-                <FileText className="text-white" size={24} />
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-blue-200/50">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-blue-900 text-sm">Forms</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{documents.filter(d => d.type === 'Form').length}</p>
-              </div>
-              <div className="p-3 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl">
-                <FileText className="text-white" size={24} />
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-blue-200/50">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-blue-900 text-sm">Templates</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{documents.filter(d => d.type === 'Template').length}</p>
-              </div>
-              <div className="p-3 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl">
-                <FileText className="text-white" size={24} />
-              </div>
-            </div>
-          </div>
+            );
+          })}
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-blue-200/50">
+        <div className="bg-white rounded-lg p-5 shadow border border-gray-200">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
@@ -142,13 +159,21 @@ const Documents = () => {
                 placeholder="Search documents..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
             <div className="flex gap-2 flex-wrap">
               <button
                 onClick={() => setFilterType('all')}
-                className={`px-4 py-2 rounded-lg transition-all ${filterType === 'all' ? 'bg-gradient-to-br from-black via-[#0A1628] to-[#1E3A8A] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                className="px-4 py-2 rounded-lg transition-all font-medium"
+                style={filterType === 'all' ? {
+                  background: 'linear-gradient(135deg, #4158D0 0%, #2563eb 100%)',
+                  color: 'white',
+                  boxShadow: '0 4px 12px rgba(65, 88, 208, 0.3)'
+                } : {
+                  background: '#f3f4f6',
+                  color: '#374151'
+                }}
               >
                 All
               </button>
@@ -156,7 +181,15 @@ const Documents = () => {
                 <button
                   key={type}
                   onClick={() => setFilterType(type)}
-                  className={`px-4 py-2 rounded-lg transition-all ${filterType === type ? 'bg-gradient-to-br from-black via-[#0A1628] to-[#1E3A8A] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                  className="px-4 py-2 rounded-lg transition-all font-medium"
+                  style={filterType === type ? {
+                    background: 'linear-gradient(135deg, #4158D0 0%, #2563eb 100%)',
+                    color: 'white',
+                    boxShadow: '0 4px 12px rgba(65, 88, 208, 0.3)'
+                  } : {
+                    background: '#f3f4f6',
+                    color: '#374151'
+                  }}
                 >
                   {type}
                 </button>
@@ -168,10 +201,13 @@ const Documents = () => {
         {/* Documents Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredDocuments.map(doc => (
-            <div key={doc.id} className="bg-white rounded-xl shadow-sm border border-blue-200/50 p-6 hover:shadow-lg transition-all">
+            <div key={doc.id} className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all border border-gray-200 p-6">
               <div className="flex items-start justify-between mb-4">
-                <div className="p-3 bg-gradient-to-br from-black via-[#0A1628] to-[#1E3A8A] rounded-xl">
-                  <FileText className="text-white" size={24} />
+                <div className="p-3 rounded-xl shadow-lg" style={{ 
+                  background: 'linear-gradient(135deg, #4158D0 0%, #2563eb 100%)',
+                  boxShadow: '0 4px 12px rgba(65, 88, 208, 0.3)'
+                }}>
+                  <FileText className="text-white" size={20} />
                 </div>
                 <span className={`px-3 py-1 rounded-full text-xs font-medium ${getTypeColor(doc.type)}`}>
                   {doc.type}
@@ -196,14 +232,20 @@ const Documents = () => {
               </div>
 
               <div className="flex gap-2">
-                <button className="flex-1 px-3 py-2 bg-gradient-to-br from-black via-[#0A1628] to-[#1E3A8A] text-white rounded-lg hover:from-[#1E3A8A] hover:to-blue-700 transition-all text-sm font-medium flex items-center justify-center gap-2">
+                <button className="flex-1 px-4 py-2 text-white rounded-lg hover:opacity-90 transition-all text-sm font-semibold flex items-center justify-center gap-2 shadow-lg" style={{ 
+                  background: 'linear-gradient(135deg, #4158D0 0%, #2563eb 100%)',
+                  boxShadow: '0 4px 12px rgba(65, 88, 208, 0.3)'
+                }}>
                   <Eye size={16} />
                   View
                 </button>
                 <button className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
                   <Download size={16} />
                 </button>
-                <button className="px-3 py-2 bg-rose-100 text-rose-700 rounded-lg hover:bg-rose-200 transition-colors">
+                <button 
+                  onClick={() => handleDelete(doc.id)}
+                  className="px-3 py-2 bg-rose-100 text-rose-700 rounded-lg hover:bg-rose-200 transition-colors"
+                >
                   <Trash2 size={16} />
                 </button>
               </div>
@@ -288,7 +330,8 @@ const Documents = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-gradient-to-br from-black via-[#0A1628] to-[#1E3A8A] text-white rounded-lg hover:from-[#1E3A8A] hover:to-blue-700 transition-all shadow-lg hover:shadow-blue-900/50"
+                  className="px-6 py-2 text-white rounded-lg hover:opacity-90 transition-all shadow-lg"
+                  style={{ backgroundColor: '#4667CF' }}
                 >
                   Upload Document
                 </button>

@@ -5,6 +5,7 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 
 const Login = ({ onLogin }) => {
+  // Login component with gradient design - Updated
   const [emailOrUsername, setEmailOrUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -46,92 +47,145 @@ const Login = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-slate-100 to-gray-100">
-      <div className="max-w-4xl w-full mx-4">
-        <div className="rounded-2xl shadow-2xl overflow-hidden bg-white/80 backdrop-blur-sm border border-white/60 ring-2 ring-gray-100/50 grid md:grid-cols-2 animate-fade-in">
-          {/* Left Side - Branding */}
-          <div className="p-12 bg-gradient-to-br from-black via-[#0A1628] to-[#1E3A8A] backdrop-blur-md flex items-center justify-center border-r border-white/20 animate-fade-in-down">
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-20 h-20 bg-white/95 backdrop-blur-sm rounded-xl mb-6 shadow-xl shadow-blue-600/40 ring-2 ring-white/30">
-                <Church size={40} className="text-blue-500" />
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden p-4" 
+      style={{ 
+        background: 'linear-gradient(to bottom right, #667eea 0%, #764ba2 100%)'
+      }}>
+      
+      {/* Animated background elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute w-96 h-96 -top-48 -left-48 rounded-full opacity-30 blur-3xl animate-pulse"
+          style={{ background: 'radial-gradient(circle, #667eea 0%, transparent 70%)' }}></div>
+        <div className="absolute w-96 h-96 -bottom-48 -right-48 rounded-full opacity-30 blur-3xl animate-pulse"
+          style={{ background: 'radial-gradient(circle, #764ba2 0%, transparent 70%)', animationDelay: '1s' }}></div>
+      </div>
+
+      <div className="max-w-6xl w-full relative z-10">
+        <div className="bg-white/90 backdrop-blur-2xl rounded-3xl shadow-2xl overflow-hidden grid md:grid-cols-5 border-2"
+          style={{ borderColor: 'rgba(102, 126, 234, 0.3)' }}>
+          
+          {/* Left Side - Branding (3 columns) */}
+          <div className="md:col-span-3 p-16 flex items-center justify-center relative overflow-hidden">
+            <div className="absolute inset-0" style={{ 
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+            }}></div>
+            
+            <div className="absolute top-10 right-10 w-72 h-72 rounded-full opacity-20 blur-2xl" 
+              style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.8) 0%, transparent 70%)' }}></div>
+            <div className="absolute bottom-10 left-10 w-56 h-56 rounded-full opacity-20 blur-2xl" 
+              style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.8) 0%, transparent 70%)' }}></div>
+
+            <div className="text-center relative z-10 max-w-lg">
+              <div className="inline-flex items-center justify-center w-28 h-28 bg-white/98 backdrop-blur-sm rounded-3xl mb-8 shadow-2xl">
+                <Church size={56} style={{ color: '#667eea' }} />
               </div>
-              <h1 className="text-3xl font-bold text-white mb-2 drop-shadow-lg">
-                Dalapian Church
+              <h1 className="text-5xl font-extrabold text-white mb-4 drop-shadow-2xl leading-tight">
+                Our Lady of Peace and Good Voyage Mission Area
               </h1>
-              <p className="text-blue-50/90 drop-shadow-md">Management System</p>
+              <p className="text-white/95 text-xl drop-shadow-lg font-medium">Church Management System</p>
             </div>
           </div>
 
-          {/* Right Side - Login Form */}
-          <div className="p-8 bg-white/90 backdrop-blur-md border-l border-white/40 animate-fade-in-up">
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-indigo-800 bg-clip-text text-transparent mb-2">
-                Welcome Back
-              </h2>
-              <p className="text-sm text-slate-600">Sign in to your account</p>
-            </div>
-
-            {error && (
-              <div className="bg-red-50/80 backdrop-blur-sm border-l-4 border-red-500 p-3 rounded mb-6 ring-1 ring-red-100/50">
-                <p className="text-sm text-red-700">{error}</p>
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div>
-                <label htmlFor="emailOrUsername" className="block text-sm font-medium text-slate-700 mb-2">
-                  Email or Username
-                </label>
-                <input
-                  id="emailOrUsername"
-                  type="text"
-                  placeholder="name@example.com or username"
-                  value={emailOrUsername}
-                  onChange={(e) => setEmailOrUsername(e.target.value)}
-                  className="w-full px-4 py-3 text-sm border border-gray-200/60 rounded-lg text-slate-900 bg-white/50 backdrop-blur-sm focus:border-blue-400/60 focus:ring-2 focus:ring-blue-400/20 focus:outline-none transition-all duration-300 placeholder:text-slate-400 ring-1 ring-gray-100/50"
-                />
+          {/* Right Side - Login Form (2 columns) */}
+          <div className="md:col-span-2 p-12 bg-white relative">
+            <div className="h-full flex flex-col justify-center">
+              <div className="mb-10">
+                <h2 className="text-4xl font-extrabold mb-3" style={{ 
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text'
+                }}>
+                  Welcome Back
+                </h2>
+                <p className="text-gray-600 text-lg">Sign in to your account</p>
               </div>
 
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-2">
-                  Password
-                </label>
-                <input
-                  id="password"
-                  type="password"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 text-sm border border-gray-200/60 rounded-lg text-slate-900 bg-white/50 backdrop-blur-sm focus:border-blue-400/60 focus:ring-2 focus:ring-blue-400/20 focus:outline-none transition-all duration-300 placeholder:text-slate-400 ring-1 ring-gray-100/50"
-                />
-              </div>
+              {error && (
+                <div className="border-l-4 p-4 rounded-lg mb-6" style={{ 
+                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                  borderColor: '#ef4444' 
+                }}>
+                  <p className="text-sm text-red-700 font-medium">{error}</p>
+                </div>
+              )}
 
-              <button
-                type="submit"
-                className="w-full py-3 mt-6 rounded-lg text-sm font-semibold text-white bg-gradient-to-r from-black via-[#0A1628] to-[#1E3A8A] hover:shadow-xl hover:shadow-blue-900/40 focus:outline-none focus:ring-4 focus:ring-blue-300/40 transition-all duration-300 flex items-center justify-center gap-2 hover:-translate-y-0.5 border border-white/20"
-              >
-                <LogIn size={18} />
-                Sign In
-              </button>
-            </form>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div>
+                  <label htmlFor="emailOrUsername" className="block text-sm font-bold mb-3" style={{ color: '#667eea' }}>
+                    Email or Username
+                  </label>
+                  <input
+                    id="emailOrUsername"
+                    type="text"
+                    placeholder="name@example.com or username"
+                    value={emailOrUsername}
+                    onChange={(e) => setEmailOrUsername(e.target.value)}
+                    className="w-full px-5 py-4 text-base rounded-2xl text-gray-900 focus:outline-none transition-all duration-300 border-2 font-medium"
+                    style={{ 
+                      backgroundColor: '#f5f3ff',
+                      borderColor: '#e0d5ff'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#667eea';
+                      e.target.style.boxShadow = '0 0 0 4px rgba(102, 126, 234, 0.2)';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = '#e0d5ff';
+                      e.target.style.boxShadow = 'none';
+                    }}
+                  />
+                </div>
 
-            <div className="mt-6 space-y-2">
-              <p className="text-xs text-gray-600 bg-blue-50/50 backdrop-blur-sm py-2 px-4 rounded-lg border border-blue-100/50">
-                Demo credentials:
-              </p>
-              <div className="text-xs text-gray-500 space-y-1">
-                <p>• admin@church.com - Administrator</p>
-                <p>• priest@church.com - Priest</p>
-                <p>• accountant@church.com - Accountant</p>
-                <p>• churchadmin@church.com - Church Admin</p>
-                <p>• user@church.com - Member</p>
+                <div>
+                  <label htmlFor="password" className="block text-sm font-bold mb-3" style={{ color: '#667eea' }}>
+                    Password
+                  </label>
+                  <input
+                    id="password"
+                    type="password"
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-5 py-4 text-base rounded-2xl text-gray-900 focus:outline-none transition-all duration-300 border-2 font-medium"
+                    style={{ 
+                      backgroundColor: '#f5f3ff',
+                      borderColor: '#e0d5ff'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#667eea';
+                      e.target.style.boxShadow = '0 0 0 4px rgba(102, 126, 234, 0.2)';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = '#e0d5ff';
+                      e.target.style.boxShadow = 'none';
+                    }}
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-5 mt-8 rounded-2xl text-base font-bold text-white hover:shadow-2xl hover:scale-[1.03] focus:outline-none transition-all duration-300 flex items-center justify-center gap-3 shadow-xl"
+                  style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
+                >
+                  <LogIn size={24} />
+                  Sign In
+                </button>
+              </form>
+
+              <div className="mt-10 space-y-4">
+                <div className="text-center">
+                  <p className="text-sm text-gray-600">
+                    Don't have an account? <button className="font-bold" style={{ color: '#667eea' }}>Join now</button>
+                  </p>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="text-center mt-6 animate-fade-in">
-          <p className="text-gray-600 text-sm drop-shadow-sm">
+        <div className="text-center mt-10">
+          <p className="text-white text-base font-medium drop-shadow-lg">
             © {new Date().getFullYear()} Church Record Management System
           </p>
         </div>

@@ -131,14 +131,16 @@ const DonationsOfferings = () => {
     handleCloseModal();
   };
 
-  const handleDelete = (id) => {
-    if (window.confirm('Are you sure you want to delete this donation record?')) {
+  const handleDelete = async (id) => {
+    const result = await showDeleteConfirm('Delete Donation?', 'Are you sure you want to delete this donation record?');
+    if (result.isConfirmed) {
       setDonations(donations.filter(d => d.id !== id));
+      showSuccessToast('Deleted!', 'Donation record has been deleted successfully');
     }
   };
 
   const handlePrintRecord = (donation) => {
-    alert(`Printing donation record for ${donation.donor}...`);
+    showInfoToast('Printing', `Printing donation record for ${donation.donor}...`);
   };
 
   return (
@@ -154,7 +156,8 @@ const DonationsOfferings = () => {
           </div>
           <button
             onClick={() => handleOpenModal('add')}
-            className="px-5 py-2.5 bg-gradient-to-r from-black via-[#0A1628] to-[#1E3A8A] text-white rounded-lg hover:from-[#1E3A8A] hover:to-blue-700 transition-all shadow-md hover:shadow-lg font-semibold flex items-center gap-2"
+            className="px-5 py-2.5 text-white rounded-lg hover:opacity-90 transition-all shadow-md font-semibold flex items-center gap-2"
+            style={{ backgroundColor: '#4667CF' }}
           >
             <Plus size={18} />
             Record Donation
@@ -166,11 +169,11 @@ const DonationsOfferings = () => {
           <div className="bg-white rounded-xl p-5 shadow-sm hover:shadow-lg transition-all border border-blue-200/50 hover:border-blue-600/50">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-blue-900 mb-1.5 font-medium">Tithes</p>
-                <p className="text-2xl font-bold text-gray-900">₱{getSummaryByType('Tithes').toLocaleString()}</p>
+                <p className="text-sm text-blue-900 mb-1.5 font-medium">Other Donations</p>
+                <p className="text-2xl font-bold text-gray-900">₱{getSummaryByType('Other').toLocaleString()}</p>
               </div>
-              <div className="p-2.5 bg-gradient-to-br from-black via-[#0A1628] to-[#1E3A8A] rounded-lg shadow-md">
-                <DollarSign className="text-white" size={22} />
+              <div className="p-2.5 rounded-lg shadow-md" style={{ backgroundColor: '#4667CF' }}>
+                <Gift className="text-white" size={22} />
               </div>
             </div>
           </div>
@@ -178,11 +181,11 @@ const DonationsOfferings = () => {
           <div className="bg-white rounded-xl p-5 shadow-sm hover:shadow-lg transition-all border border-blue-200/50 hover:border-blue-600/50">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-blue-900 mb-1.5 font-medium">Sunday Offerings</p>
-                <p className="text-2xl font-bold text-gray-900">₱{getSummaryByType('Sunday Offerings').toLocaleString()}</p>
+                <p className="text-sm text-blue-900 mb-1.5 font-medium">Offerings</p>
+                <p className="text-2xl font-bold text-gray-900">₱{getSummaryByType('Offerings').toLocaleString()}</p>
               </div>
-              <div className="p-2.5 bg-gradient-to-br from-black via-[#0A1628] to-[#1E3A8A] rounded-lg shadow-md">
-                <HandHeart className="text-white" size={22} />
+              <div className="p-2.5 rounded-lg shadow-md" style={{ backgroundColor: '#4667CF' }}>
+                <Heart className="text-white" size={22} />
               </div>
             </div>
           </div>
@@ -193,7 +196,7 @@ const DonationsOfferings = () => {
                 <p className="text-sm text-blue-900 mb-1.5 font-medium">Building Fund</p>
                 <p className="text-2xl font-bold text-gray-900">₱{getSummaryByType('Building Fund').toLocaleString()}</p>
               </div>
-              <div className="p-2.5 bg-gradient-to-br from-black via-[#0A1628] to-[#1E3A8A] rounded-lg shadow-md">
+              <div className="p-2.5 rounded-lg shadow-md" style={{ backgroundColor: '#4667CF' }}>
                 <TrendingUp className="text-white" size={22} />
               </div>
             </div>
@@ -202,18 +205,18 @@ const DonationsOfferings = () => {
           <div className="bg-white rounded-xl p-5 shadow-sm hover:shadow-lg transition-all border border-blue-200/50 hover:border-blue-600/50">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-blue-900 mb-1.5 font-medium">Special Collection</p>
-                <p className="text-2xl font-bold text-gray-900">₱{getSummaryByType('Special Collection').toLocaleString()}</p>
+                <p className="text-sm text-blue-900 mb-1.5 font-medium">Special Collections</p>
+                <p className="text-2xl font-bold text-gray-900">₱{getSummaryByType('Special Collections').toLocaleString()}</p>
               </div>
-              <div className="p-2.5 bg-gradient-to-br from-black via-[#0A1628] to-[#1E3A8A] rounded-lg shadow-md">
-                <Calendar className="text-white" size={22} />
+              <div className="p-2.5 rounded-lg shadow-md" style={{ backgroundColor: '#4667CF' }}>
+                <TrendingUp className="text-white" size={22} />
               </div>
             </div>
           </div>
         </div>
 
         {/* Total Summary */}
-        <div className="bg-gradient-to-r from-black via-[#0A1628] to-[#1E3A8A] rounded-xl p-6 shadow-lg">
+        <div className="rounded-xl p-6 shadow-lg" style={{ backgroundColor: '#4667CF' }}>
           <div className="flex items-center justify-between">
             <div>
               <p className="text-blue-200 text-sm mb-1 font-medium">Total Donations & Offerings</p>
@@ -460,7 +463,8 @@ const DonationsOfferings = () => {
               <div className="flex gap-3 pt-4">
                 <button
                   type="submit"
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-black via-[#0A1628] to-[#1E3A8A] text-white rounded-lg hover:shadow-xl transition-all font-semibold"
+                  className="flex-1 px-6 py-3 text-white rounded-lg hover:opacity-90 transition-all font-semibold"
+                  style={{ backgroundColor: '#4667CF' }}
                 >
                   {modalMode === 'add' ? 'Record Donation' : 'Update Donation'}
                 </button>

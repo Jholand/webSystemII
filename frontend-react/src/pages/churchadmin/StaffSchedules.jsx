@@ -96,7 +96,8 @@ const StaffSchedules = () => {
           </div>
           <button 
             onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-br from-black via-[#0A1628] to-[#1E3A8A] text-white rounded-xl hover:from-[#1E3A8A] hover:to-blue-700 transition-all shadow-lg hover:shadow-blue-900/50"
+            className="flex items-center gap-2 px-6 py-3 text-white rounded-xl hover:opacity-90 transition-all shadow-lg"
+            style={{ backgroundColor: '#4667CF' }}
           >
             <Plus size={20} />
             Add Schedule
@@ -264,7 +265,8 @@ const StaffSchedules = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-gradient-to-br from-black via-[#0A1628] to-[#1E3A8A] text-white rounded-lg hover:from-[#1E3A8A] hover:to-blue-700 transition-all shadow-lg hover:shadow-blue-900/50"
+                  className="px-6 py-2 text-white rounded-lg hover:opacity-90 transition-all shadow-lg"
+                  style={{ backgroundColor: '#4667CF' }}
                 >
                   Add Schedule
                 </button>

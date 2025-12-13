@@ -1,72 +1,76 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Search, Edit, Trash2, Eye, Download, Heart } from 'lucide-react';
 import ModalOverlay from '../../components/ModalOverlay';
+import { priestService, marriageRecordService } from '../../services/churchService';
+import Swal from 'sweetalert2';
+import { showDeleteConfirm, showSuccessToast, showErrorToast } from '../../utils/sweetAlertHelper';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import Pagination from '../../components/Pagination';
+import { formatDate } from '../../utils/dateFormatter';
 
 const MarriageRecords = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState('add');
+  const [priests, setPriests] = useState([]);
+  const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(false);
   
-  const [records, setRecords] = useState([
-    {
-      id: 1,
-      groomName: 'Michael James Anderson',
-      groomContact: '0912-345-6789',
-      brideName: 'Sarah Elizabeth Johnson',
-      brideContact: '0923-456-7890',
-      marriageDate: '2025-06-15',
-      venue: 'St. Mary\'s Cathedral',
-      priest: 'Fr. Joseph Smith',
-      witnesses: 'John Doe, Jane Smith',
-      status: 'Complete',
-    },
-    {
-      id: 2,
-      groomName: 'Robert David Wilson',
-      groomContact: '0934-567-8901',
-      brideName: 'Emily Grace Brown',
-      brideContact: '0945-678-9012',
-      marriageDate: '2025-08-22',
-      venue: 'Holy Cross Church',
-      priest: 'Fr. Michael Thompson',
-      witnesses: 'Tom Wilson, Lisa Brown',
-      status: 'Complete',
-    },
-    {
-      id: 3,
-      groomName: 'William Thomas Martinez',
-      groomContact: '0956-789-0123',
-      brideName: 'Jessica Anne Taylor',
-      brideContact: '0967-890-1234',
-      marriageDate: '2025-12-10',
-      venue: 'St. Paul\'s Church',
-      priest: 'Fr. Joseph Smith',
-      witnesses: 'Pending',
-      status: 'Pending',
-    },
-  ]);
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const [formData, setFormData] = useState({
-    groomName: '',
-    groomContact: '',
-    brideName: '',
-    brideContact: '',
-    marriageDate: '',
-    venue: '',
-    priest: '',
+    groom_name: '',
+    groom_contact: '',
+    bride_name: '',
+    bride_contact: '',
+    marriage_date: '',
+    marriage_time: '10:00',
+    marriage_location: '',
+    priest_id: '',
     witnesses: '',
   });
+
+  // Fetch priests and records on component mount
+  useEffect(() => {
+    fetchPriests();
+    fetchRecords();
+  }, []);
+
+  const fetchPriests = async () => {
+    try {
+      const response = await priestService.getAll();
+      setPriests(response.data || []);
+    } catch (err) {
+      console.error('Error fetching priests:', err);
+    }
+  };
+
+  const fetchRecords = async () => {
+    try {
+      setLoading(true);
+      const response = await marriageRecordService.getAll();
+      setRecords(response.data || []);
+    } catch (err) {
+      console.error('Error fetching marriage records:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAddNew = () => {
     setModalMode('add');
     setFormData({
-      groomName: '',
-      groomContact: '',
-      brideName: '',
-      brideContact: '',
-      marriageDate: '',
-      venue: '',
-      priest: '',
+      groom_name: '',
+      groom_contact: '',
+      bride_name: '',
+      bride_contact: '',
+      marriage_date: '',
+      marriage_time: '10:00',
+      marriage_location: '',
+      priest_id: '',
       witnesses: '',
     });
     setShowModal(true);
@@ -74,70 +78,193 @@ const MarriageRecords = () => {
 
   const handleEdit = (record) => {
     setModalMode('edit');
-    setFormData(record);
+    setFormData({
+      id: record.id,
+      groom_name: record.groom_name,
+      groom_contact: record.groom_contact || '',
+      bride_name: record.bride_name,
+      bride_contact: record.bride_contact || '',
+      marriage_date: record.marriage_date,
+      marriage_time: record.marriage_time || '10:00',
+      marriage_location: record.marriage_location,
+      priest_id: record.priest_id,
+      witnesses: record.witnesses || '',
+    });
     setShowModal(true);
   };
 
   const handleView = (record) => {
     setModalMode('view');
-    setFormData(record);
+    setFormData({
+      id: record.id,
+      groom_name: record.groom_name,
+      groom_contact: record.groom_contact || '',
+      bride_name: record.bride_name,
+      bride_contact: record.bride_contact || '',
+      marriage_date: record.marriage_date,
+      marriage_time: record.marriage_time || '10:00',
+      marriage_location: record.marriage_location,
+      priest_id: record.priest_id,
+      witnesses: record.witnesses || '',
+    });
     setShowModal(true);
   };
 
-  const handleDelete = (id) => {
-    if (confirm('Are you sure you want to delete this record?')) {
-      setRecords(records.filter(r => r.id !== id));
+  const handleDelete = async (id) => {
+    const result = await showDeleteConfirm('Delete Record?', 'Are you sure you want to delete this record?');
+    if (result.isConfirmed) {
+      try {
+        await marriageRecordService.delete(id);
+        await fetchRecords();
+        showSuccessToast('Deleted!', 'Record has been deleted successfully');
+      } catch (err) {
+        showErrorToast('Error!', 'Failed to delete record');
+        console.error('Error deleting record:', err);
+      }
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (modalMode === 'add') {
-      setRecords([...records, { ...formData, id: records.length + 1, status: 'Complete' }]);
-    } else if (modalMode === 'edit') {
-      setRecords(records.map(r => r.id === formData.id ? formData : r));
+    try {
+      setLoading(true);
+      if (modalMode === 'add') {
+        await marriageRecordService.create(formData);
+      } else if (modalMode === 'edit') {
+        await marriageRecordService.update(formData.id, formData);
+      }
+      await fetchRecords();
+      setShowModal(false);
+      showSuccessToast('Success!', `Marriage record ${modalMode === 'edit' ? 'updated' : 'created'} successfully`);
+    } catch (err) {
+      showErrorToast('Error', 'Failed to save record: ' + (err.response?.data?.message || err.message));
+      console.error('Error saving record:', err);
+    } finally {
+      setLoading(false);
     }
-    setShowModal(false);
   };
 
   const filteredRecords = records.filter(record =>
-    record.groomName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    record.brideName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    record.venue.toLowerCase().includes(searchTerm.toLowerCase())
+    record.groom_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    record.bride_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-gray-100 dark:from-gray-900 dark:via-blue-950 dark:to-gray-900 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-fade-in-down">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Marriage Records</h1>
-            <p className="text-blue-900 dark:text-gray-400 text-sm mt-1">Manage marriage ceremonies</p>
-          </div>
-          <button
-            onClick={handleAddNew}
-            className="flex items-center gap-2 bg-gradient-to-r from-black via-[#0A1628] to-[#1E3A8A] hover:from-[#1E3A8A] hover:to-blue-700 text-white px-4 py-2 rounded-lg hover:shadow-xl hover:shadow-blue-900/50 transition-all font-medium text-sm hover:scale-105"
-          >
-            <Plus size={20} />
-            Add New Record
-          </button>
-        </div>
+  // Pagination logic
+  const indexOfLastRecord = currentPage * itemsPerPage;
+  const indexOfFirstRecord = indexOfLastRecord - itemsPerPage;
+  const currentRecords = filteredRecords.slice(indexOfFirstRecord, indexOfLastRecord);
 
-        {/* Search and Filters */}
-        <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-lg shadow-sm p-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    
+    // Add title
+    doc.setFontSize(18);
+    doc.setTextColor(70, 103, 207);
+    doc.text('Marriage Records', 105, 20, { align: 'center' });
+    
+    // Add subtitle with date
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Generated on: ${new Date().toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    })}`, 105, 28, { align: 'center' });
+    
+    // Prepare table data
+    const tableData = filteredRecords.map((record, index) => [
+      `MR-${String(record.id).padStart(4, '0')}`,
+      record.groom_name,
+      record.groom_contact || 'N/A',
+      record.bride_name,
+      record.bride_contact || 'N/A',
+      formatDate(record.marriage_date),
+      record.marriage_location,
+      priests.find(p => p.id === record.priest_id)?.name || 'N/A',
+      record.status || 'pending'
+    ]);
+    
+    // Add table using autoTable
+    autoTable(doc, {
+      startY: 35,
+      head: [['Record #', 'Groom', 'Contact', 'Bride', 'Contact', 'Date', 'Location', 'Priest', 'Status']],
+      body: tableData,
+      theme: 'striped',
+      styles: {
+        overflow: 'linebreak',
+        cellPadding: 2
+      },
+      headStyles: {
+        fillColor: [70, 103, 207],
+        textColor: 255,
+        fontSize: 7,
+        fontStyle: 'bold',
+        halign: 'center'
+      },
+      bodyStyles: {
+        fontSize: 7,
+        textColor: [50, 50, 50]
+      },
+      alternateRowStyles: {
+        fillColor: [245, 247, 250]
+      },
+      columnStyles: {
+        0: { cellWidth: 18, halign: 'center' },
+        1: { cellWidth: 22 },
+        2: { cellWidth: 16 },
+        3: { cellWidth: 22 },
+        4: { cellWidth: 16 },
+        5: { cellWidth: 18, halign: 'center' },
+        6: { cellWidth: 24 },
+        7: { cellWidth: 20 },
+        8: { cellWidth: 16, halign: 'center' }
+      },
+      margin: { top: 35, left: 10, right: 10, bottom: 20 }
+    });
+    
+    // Add footer
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.text(
+        `Page ${i} of ${pageCount}`,
+        doc.internal.pageSize.width / 2,
+        doc.internal.pageSize.height - 10,
+        { align: 'center' }
+      );
+      doc.text(
+        'QLPGVMA - Church Records Management System',
+        14,
+        doc.internal.pageSize.height - 10
+      );
+    }
+    
+    // Save the PDF
+    doc.save(`Marriage_Records_${new Date().toISOString().split('T')[0]}.pdf`);
+    showSuccessToast('Success!', 'Marriage records exported to PDF successfully');
+  };
+
+  return (
+    <div className="h-full flex flex-col space-y-4">
+      {/* Search and Actions Bar */}
+      <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-lg shadow-sm p-4">
+        <div className="flex flex-col md:flex-row gap-4 items-center">
+          <div className="flex-1 relative w-full">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
             <input
               type="text"
-              placeholder="Search by groom, bride, or venue..."
+              placeholder="Search by groom or bride name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all text-sm text-slate-900 placeholder:text-slate-400"
+              className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white dark:focus:bg-gray-600 transition-all text-sm text-slate-900 dark:text-gray-100 placeholder:text-slate-400"
             />
           </div>
-          <button className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-6 py-3 rounded-xl transition-all font-semibold shadow-lg hover:shadow-xl hover:scale-105">
+          <button 
+            onClick={handleExportPDF}
+            className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 py-3 rounded-xl transition-all font-medium shadow-lg hover:shadow-xl hover:scale-105"
+          >
             <Download size={20} />
             Export
           </button>
@@ -145,8 +272,8 @@ const MarriageRecords = () => {
       </div>
 
       {/* Records Table */}
-      <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="flex-1 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden">
+        <div className="overflow-x-auto h-full">
           <table className="w-full">
             <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
               <tr>
@@ -169,9 +296,6 @@ const MarriageRecords = () => {
                   Marriage Date
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">
-                  Venue
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">
                   Priest
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">
@@ -183,27 +307,28 @@ const MarriageRecords = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-              {filteredRecords.map((record) => (
+              {currentRecords.map((record) => (
                 <tr key={record.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
                   <td className="px-4 py-3">
                     <div className="font-bold text-blue-600 dark:text-blue-400 text-sm">MR-{String(record.id).padStart(4, '0')}</div>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="font-medium text-gray-900 dark:text-gray-100 text-sm">{record.groomName}</div>
+                    <div className="font-medium text-gray-900 dark:text-gray-100 text-sm">{record.groom_name}</div>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{record.groomContact}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{record.groom_contact || 'N/A'}</td>
                   <td className="px-4 py-3">
-                    <div className="font-medium text-gray-900 dark:text-gray-100 text-sm">{record.brideName}</div>
+                    <div className="font-medium text-gray-900 dark:text-gray-100 text-sm">{record.bride_name}</div>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{record.brideContact}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{record.marriageDate}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{record.venue}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{record.priest}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{record.bride_contact || 'N/A'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{record.marriage_date}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{record.priest?.name || 'N/A'}</td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      record.status === 'Complete' 
+                      record.status === 'completed' 
                         ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' 
-                        : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
+                        : record.status === 'pending'
+                        ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
+                        : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
                     }`}>
                       {record.status}
                     </span>
@@ -237,6 +362,16 @@ const MarriageRecords = () => {
               ))}
             </tbody>
           </table>
+          <Pagination
+            currentPage={currentPage}
+            totalItems={filteredRecords.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={(value) => {
+              setItemsPerPage(value);
+              setCurrentPage(1);
+            }}
+          />
         </div>
       </div>
 
@@ -258,8 +393,8 @@ const MarriageRecords = () => {
                   </label>
                   <input
                     type="text"
-                    value={formData.groomName}
-                    onChange={(e) => setFormData({...formData, groomName: e.target.value})}
+                    value={formData.groom_name}
+                    onChange={(e) => setFormData({...formData, groom_name: e.target.value})}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     disabled={modalMode === 'view'}
                     required
@@ -272,12 +407,11 @@ const MarriageRecords = () => {
                   </label>
                   <input
                     type="tel"
-                    value={formData.groomContact}
-                    onChange={(e) => setFormData({...formData, groomContact: e.target.value})}
+                    value={formData.groom_contact}
+                    onChange={(e) => setFormData({...formData, groom_contact: e.target.value})}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="0912-345-6789"
                     disabled={modalMode === 'view'}
-                    required
                   />
                 </div>
                 
@@ -287,8 +421,8 @@ const MarriageRecords = () => {
                   </label>
                   <input
                     type="text"
-                    value={formData.brideName}
-                    onChange={(e) => setFormData({...formData, brideName: e.target.value})}
+                    value={formData.bride_name}
+                    onChange={(e) => setFormData({...formData, bride_name: e.target.value})}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     disabled={modalMode === 'view'}
                     required
@@ -301,12 +435,11 @@ const MarriageRecords = () => {
                   </label>
                   <input
                     type="tel"
-                    value={formData.brideContact}
-                    onChange={(e) => setFormData({...formData, brideContact: e.target.value})}
+                    value={formData.bride_contact}
+                    onChange={(e) => setFormData({...formData, bride_contact: e.target.value})}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="0923-456-7890"
                     disabled={modalMode === 'view'}
-                    required
                   />
                 </div>
 
@@ -316,8 +449,8 @@ const MarriageRecords = () => {
                   </label>
                   <input
                     type="date"
-                    value={formData.marriageDate}
-                    onChange={(e) => setFormData({...formData, marriageDate: e.target.value})}
+                    value={formData.marriage_date}
+                    onChange={(e) => setFormData({...formData, marriage_date: e.target.value})}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     disabled={modalMode === 'view'}
                     required
@@ -326,13 +459,28 @@ const MarriageRecords = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Venue
+                    Marriage Time
+                  </label>
+                  <input
+                    type="time"
+                    value={formData.marriage_time}
+                    onChange={(e) => setFormData({...formData, marriage_time: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    disabled={modalMode === 'view'}
+                    required
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Marriage Location
                   </label>
                   <input
                     type="text"
-                    value={formData.venue}
-                    onChange={(e) => setFormData({...formData, venue: e.target.value})}
+                    value={formData.marriage_location}
+                    onChange={(e) => setFormData({...formData, marriage_location: e.target.value})}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="e.g., St. Mary's Cathedral"
                     disabled={modalMode === 'view'}
                     required
                   />
@@ -342,14 +490,20 @@ const MarriageRecords = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Officiating Priest
                   </label>
-                  <input
-                    type="text"
-                    value={formData.priest}
-                    onChange={(e) => setFormData({...formData, priest: e.target.value})}
+                  <select
+                    value={formData.priest_id}
+                    onChange={(e) => setFormData({...formData, priest_id: e.target.value})}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     disabled={modalMode === 'view'}
                     required
-                  />
+                  >
+                    <option value="">Select a priest...</option>
+                    {priests.map((priest) => (
+                      <option key={priest.id} value={priest.id}>
+                        {priest.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
@@ -388,7 +542,6 @@ const MarriageRecords = () => {
           </div>
         </ModalOverlay>
       )}
-      </div>
     </div>
   );
 };

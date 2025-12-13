@@ -1,147 +1,194 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Search, Edit, Trash2, Eye, Download } from 'lucide-react';
 import ModalOverlay from '../../components/ModalOverlay';
+import Swal from 'sweetalert2';
+import { showDeleteConfirm, showSuccessToast, showErrorToast } from '../../utils/sweetAlertHelper';
+import { priestService, baptismRecordService } from '../../services/churchService';
+import Pagination from '../../components/Pagination';
+import { formatDate } from '../../utils/dateFormatter';
 
 const BirthRecords = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState('add'); // 'add', 'edit', 'view'
+  const [priests, setPriests] = useState([]);
+  const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(false);
   
-  const [records, setRecords] = useState([
-    {
-      id: 1,
-      childName: 'John Michael Doe',
-      dateOfBirth: '2025-01-15',
-      gender: 'Male',
-      father: 'Michael Doe',
-      mother: 'Jane Doe',
-      baptismDate: '2025-02-20',
-      priest: 'Fr. Joseph Smith',
-      status: 'Complete',
-    },
-    {
-      id: 2,
-      childName: 'Emily Grace Brown',
-      dateOfBirth: '2025-03-22',
-      gender: 'Female',
-      father: 'Robert Brown',
-      mother: 'Sarah Brown',
-      baptismDate: '2025-04-10',
-      priest: 'Fr. Joseph Smith',
-      status: 'Complete',
-    },
-    {
-      id: 3,
-      childName: 'James William Wilson',
-      dateOfBirth: '2025-05-08',
-      gender: 'Male',
-      father: 'William Wilson',
-      mother: 'Lisa Wilson',
-      baptismDate: 'Pending',
-      priest: '-',
-      status: 'Pending',
-    },
-  ]);
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const [formData, setFormData] = useState({
-    childName: '',
-    dateOfBirth: '',
+    child_name: '',
+    date_of_birth: '',
+    place_of_birth: '',
     gender: '',
-    father: '',
-    mother: '',
-    baptismDate: '',
-    priest: '',
+    father_name: '',
+    mother_name: '',
+    baptism_date: '',
+    priest_id: '',
+    godfather_name: '',
+    godmother_name: '',
+    remarks: '',
   });
+
+  // Fetch priests and records on component mount
+  useEffect(() => {
+    fetchPriests();
+    fetchRecords();
+  }, []);
+
+  const fetchPriests = async () => {
+    try {
+      const data = await priestService.getAll();
+      setPriests(data);
+    } catch (err) {
+      console.error('Error fetching priests:', err);
+      showErrorToast('Error', 'Failed to load priests');
+    }
+  };
+
+  const fetchRecords = async () => {
+    try {
+      setLoading(true);
+      const data = await baptismRecordService.getAll();
+      setRecords(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Error fetching baptism records:', err);
+      showErrorToast('Error', 'Failed to load baptism records');
+      setRecords([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAddNew = () => {
     setModalMode('add');
     setFormData({
-      childName: '',
-      dateOfBirth: '',
+      child_name: '',
+      date_of_birth: '',
+      place_of_birth: '',
       gender: '',
-      father: '',
-      mother: '',
-      baptismDate: '',
-      priest: '',
+      father_name: '',
+      mother_name: '',
+      baptism_date: '',
+      priest_id: '',
+      godfather_name: '',
+      godmother_name: '',
+      remarks: '',
     });
     setShowModal(true);
   };
 
   const handleEdit = (record) => {
     setModalMode('edit');
-    setFormData(record);
+    setFormData({
+      id: record.id,
+      child_name: record.child_name,
+      date_of_birth: record.date_of_birth,
+      place_of_birth: record.place_of_birth || '',
+      gender: record.gender,
+      father_name: record.father_name,
+      mother_name: record.mother_name,
+      baptism_date: record.baptism_date,
+      priest_id: record.priest_id,
+      godfather_name: record.godfather_name || '',
+      godmother_name: record.godmother_name || '',
+      remarks: record.remarks || '',
+    });
     setShowModal(true);
   };
 
   const handleView = (record) => {
     setModalMode('view');
-    setFormData(record);
+    setFormData({
+      id: record.id,
+      child_name: record.child_name,
+      date_of_birth: record.date_of_birth,
+      place_of_birth: record.place_of_birth || '',
+      gender: record.gender,
+      father_name: record.father_name,
+      mother_name: record.mother_name,
+      baptism_date: record.baptism_date,
+      priest_id: record.priest_id,
+      godfather_name: record.godfather_name || '',
+      godmother_name: record.godmother_name || '',
+      remarks: record.remarks || '',
+    });
     setShowModal(true);
   };
 
-  const handleDelete = (id) => {
-    if (confirm('Are you sure you want to delete this record?')) {
-      setRecords(records.filter(r => r.id !== id));
+  const handleDelete = async (id) => {
+    const result = await showDeleteConfirm('Delete Baptism Record?', 'This action cannot be undone!');
+    if (result.isConfirmed) {
+      try {
+        await baptismRecordService.delete(id);
+        await fetchRecords();
+        showSuccessToast('Deleted!', 'Baptism record has been deleted successfully');
+      } catch (err) {
+        console.error('Error deleting record:', err);
+        showErrorToast('Error', 'Failed to delete baptism record');
+      }
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (modalMode === 'add') {
-      setRecords([...records, { ...formData, id: records.length + 1, status: 'Complete' }]);
-    } else if (modalMode === 'edit') {
-      setRecords(records.map(r => r.id === formData.id ? formData : r));
+    try {
+      setLoading(true);
+      if (modalMode === 'add') {
+        await baptismRecordService.create(formData);
+      } else if (modalMode === 'edit') {
+        await baptismRecordService.update(formData.id, formData);
+      }
+      setShowModal(false);
+      await fetchRecords();
+      showSuccessToast('Success!', `Baptism record has been ${modalMode === 'edit' ? 'updated' : 'created'} successfully`);
+    } catch (err) {
+      console.error('Error saving record:', err);
+      showErrorToast('Error', 'Failed to save baptism record');
+    } finally {
+      setLoading(false);
     }
-    setShowModal(false);
   };
 
-  const filteredRecords = records.filter(record =>
-    record.childName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    record.father.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    record.mother.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredRecords = Array.isArray(records) ? records.filter(record =>
+    record.child_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    record.father_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    record.mother_name?.toLowerCase().includes(searchTerm.toLowerCase())
+  ) : [];
+
+  // Pagination logic
+  const indexOfLastRecord = currentPage * itemsPerPage;
+  const indexOfFirstRecord = indexOfLastRecord - itemsPerPage;
+  const currentRecords = filteredRecords.slice(indexOfFirstRecord, indexOfLastRecord);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-gray-100 dark:from-gray-900 dark:via-blue-950 dark:to-gray-900 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-fade-in-down">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Birth Records</h1>
-            <p className="text-blue-900 dark:text-gray-400 text-sm mt-1">Manage birth and baptism records</p>
+    <div className="h-full flex flex-col space-y-4">
+      {/* Search and Actions Bar */}
+      <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-lg shadow-sm p-4">
+        <div className="flex flex-col md:flex-row gap-4 items-center">
+          <div className="flex-1 relative w-full">
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <input
+              type="text"
+              placeholder="Search by child name, father, or mother..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
+            />
           </div>
-          <button
-            onClick={handleAddNew}
-            className="flex items-center gap-2 bg-gradient-to-r from-black via-[#0A1628] to-[#1E3A8A] hover:from-[#1E3A8A] hover:to-blue-700 text-white px-4 py-2 rounded-lg hover:shadow-xl hover:shadow-blue-900/50 transition-all font-medium text-sm hover:scale-105"
-          >
-            <Plus size={20} />
-            Add New Record
+          <button className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 py-3 rounded-xl transition-all font-medium shadow-lg hover:shadow-xl hover:scale-105">
+            <Download size={20} />
+            Export
           </button>
         </div>
+      </div>
 
-        {/* Search and Filters */}
-        <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-lg shadow-sm p-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-              <input
-                type="text"
-                placeholder="Search by child name, father, or mother..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
-              />
-            </div>
-            <button className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-3 rounded-xl transition-all font-semibold shadow-lg hover:shadow-xl hover:scale-105">
-              <Download size={20} />
-              Export
-            </button>
-          </div>
-        </div>
-
-        {/* Records Table */}
-        <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
+      {/* Records Table */}
+      <div className="flex-1 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden">
+        <div className="overflow-x-auto h-full">
             <table className="w-full">
               <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
                 <tr>
@@ -169,29 +216,50 @@ const BirthRecords = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-              {filteredRecords.map((record) => (
-                <tr key={record.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                  <td className="px-4 py-3">
-                    <div className="font-medium text-gray-900 dark:text-gray-100 text-sm">{record.childName}</div>
+              {loading ? (
+                <tr>
+                  <td colSpan="7" className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+                    Loading records...
                   </td>
-                  <td className="px-4 py-3 text-sm text-blue-900 dark:text-gray-400">{record.dateOfBirth}</td>
-                  <td className="px-4 py-3 text-sm text-blue-900 dark:text-gray-400">{record.gender}</td>
-                  <td className="px-4 py-3">
-                    <div className="text-gray-900 dark:text-gray-100 font-medium text-sm">{record.father}</div>
-                    <div className="text-blue-900 dark:text-gray-400 text-xs">{record.mother}</div>
+                </tr>
+              ) : filteredRecords.length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+                    No records found
                   </td>
-                  <td className="px-4 py-3 text-sm text-blue-900 dark:text-gray-400">{record.baptismDate}</td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      record.status === 'Complete' 
-                        ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' 
-                        : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
-                    }`}>
-                      {record.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
+                </tr>
+              ) : (
+                currentRecords.map((record) => {
+                  const priest = priests.find(p => p.id === record.priest_id);
+                  const status = record.baptism_date && record.baptism_date !== 'Pending' ? 'Complete' : 'Pending';
+                  
+                  return (
+                    <tr key={record.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-gray-900 dark:text-gray-100 text-sm">{record.child_name}</div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-blue-900 dark:text-gray-400">
+                        {formatDate(record.date_of_birth)}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-blue-900 dark:text-gray-400">{record.gender}</td>
+                      <td className="px-4 py-3">
+                        <div className="text-gray-900 dark:text-gray-100 font-medium text-sm">{record.father_name}</div>
+                        <div className="text-blue-900 dark:text-gray-400 text-xs">{record.mother_name}</div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-blue-900 dark:text-gray-400">
+                        {record.baptism_date ? formatDate(record.baptism_date) : 'Pending'}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                          status === 'Complete' 
+                            ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' 
+                            : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
+                        }`}>
+                          {status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1">
                       <button
                         onClick={() => handleView(record)}
                         className="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
@@ -216,9 +284,21 @@ const BirthRecords = () => {
                     </div>
                   </td>
                 </tr>
-              ))}
+                  );
+                })
+              )}
             </tbody>
           </table>
+          <Pagination
+            currentPage={currentPage}
+            totalItems={filteredRecords.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={(value) => {
+              setItemsPerPage(value);
+              setCurrentPage(1);
+            }}
+          />
         </div>
       </div>
 
@@ -236,12 +316,12 @@ const BirthRecords = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Child Name
+                    Child Name *
                   </label>
                   <input
                     type="text"
-                    value={formData.childName}
-                    onChange={(e) => setFormData({...formData, childName: e.target.value})}
+                    value={formData.child_name}
+                    onChange={(e) => setFormData({...formData, child_name: e.target.value})}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     disabled={modalMode === 'view'}
                     required
@@ -250,12 +330,12 @@ const BirthRecords = () => {
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Date of Birth
+                    Date of Birth *
                   </label>
                   <input
                     type="date"
-                    value={formData.dateOfBirth}
-                    onChange={(e) => setFormData({...formData, dateOfBirth: e.target.value})}
+                    value={formData.date_of_birth}
+                    onChange={(e) => setFormData({...formData, date_of_birth: e.target.value})}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     disabled={modalMode === 'view'}
                     required
@@ -264,7 +344,20 @@ const BirthRecords = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Gender
+                    Place of Birth
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.place_of_birth}
+                    onChange={(e) => setFormData({...formData, place_of_birth: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    disabled={modalMode === 'view'}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Gender *
                   </label>
                   <select
                     value={formData.gender}
@@ -281,12 +374,12 @@ const BirthRecords = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Father's Name
+                    Father's Name *
                   </label>
                   <input
                     type="text"
-                    value={formData.father}
-                    onChange={(e) => setFormData({...formData, father: e.target.value})}
+                    value={formData.father_name}
+                    onChange={(e) => setFormData({...formData, father_name: e.target.value})}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     disabled={modalMode === 'view'}
                     required
@@ -295,15 +388,41 @@ const BirthRecords = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Mother's Name
+                    Mother's Name *
                   </label>
                   <input
                     type="text"
-                    value={formData.mother}
-                    onChange={(e) => setFormData({...formData, mother: e.target.value})}
+                    value={formData.mother_name}
+                    onChange={(e) => setFormData({...formData, mother_name: e.target.value})}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     disabled={modalMode === 'view'}
                     required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Godfather's Name
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.godfather_name}
+                    onChange={(e) => setFormData({...formData, godfather_name: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    disabled={modalMode === 'view'}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Godmother's Name
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.godmother_name}
+                    onChange={(e) => setFormData({...formData, godmother_name: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    disabled={modalMode === 'view'}
                   />
                 </div>
 
@@ -313,23 +432,42 @@ const BirthRecords = () => {
                   </label>
                   <input
                     type="date"
-                    value={formData.baptismDate}
-                    onChange={(e) => setFormData({...formData, baptismDate: e.target.value})}
+                    value={formData.baptism_date}
+                    onChange={(e) => setFormData({...formData, baptism_date: e.target.value})}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     disabled={modalMode === 'view'}
                   />
                 </div>
 
-                <div className="md:col-span-2">
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Officiating Priest
                   </label>
-                  <input
-                    type="text"
-                    value={formData.priest}
-                    onChange={(e) => setFormData({...formData, priest: e.target.value})}
+                  <select
+                    value={formData.priest_id}
+                    onChange={(e) => setFormData({...formData, priest_id: e.target.value})}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     disabled={modalMode === 'view'}
+                  >
+                    <option value="">Select Priest</option>
+                    {priests.map(priest => (
+                      <option key={priest.id} value={priest.id}>
+                        {priest.first_name} {priest.last_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Remarks
+                  </label>
+                  <textarea
+                    value={formData.remarks}
+                    onChange={(e) => setFormData({...formData, remarks: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    disabled={modalMode === 'view'}
+                    rows="3"
                   />
                 </div>
               </div>
@@ -339,15 +477,18 @@ const BirthRecords = () => {
                   type="button"
                   onClick={() => setShowModal(false)}
                   className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  disabled={loading}
                 >
                   {modalMode === 'view' ? 'Close' : 'Cancel'}
                 </button>
                 {modalMode !== 'view' && (
                   <button
                     type="submit"
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-black via-[#0A1628] to-[#1E3A8A] text-white rounded-lg font-medium hover:from-[#1E3A8A] hover:to-blue-700 transition-all shadow-lg hover:shadow-blue-900/50"
+                    disabled={loading}
+                    className="flex-1 px-6 py-3 text-white rounded-lg font-medium hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ backgroundColor: '#4158D0' }}
                   >
-                    {modalMode === 'add' ? 'Add Record' : 'Save Changes'}
+                    {loading ? 'Saving...' : modalMode === 'add' ? 'Add Record' : 'Save Changes'}
                   </button>
                 )}
               </div>
@@ -355,7 +496,6 @@ const BirthRecords = () => {
           </div>
         </ModalOverlay>
       )}
-      </div>
     </div>
   );
 };

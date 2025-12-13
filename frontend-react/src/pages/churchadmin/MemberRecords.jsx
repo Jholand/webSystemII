@@ -1,11 +1,40 @@
 import { useState, useEffect } from 'react';
 import { Search, Filter, Eye, Edit, UserPlus, Phone, Mail, MapPin, Calendar, Users, Download, ChevronDown, X } from 'lucide-react';
 import ModalOverlay from '../../components/ModalOverlay';
+import Pagination from '../../components/Pagination';
+import { memberAPI } from '../../services/dataSync';
+import { showSuccessToast, showErrorToast } from '../../utils/sweetAlertHelper';
 
 const MemberRecords = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [showModal, setShowModal] = useState(false);
+  const [members, setMembers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // Fetch members from database
+  useEffect(() => {
+    fetchMembers();
+  }, []);
+
+  const fetchMembers = async () => {
+    try {
+      setLoading(true);
+      const response = await memberAPI.getAll();
+      // Handle both paginated and direct array responses
+      const membersData = response?.data || response || [];
+      setMembers(Array.isArray(membersData) ? membersData : []);
+    } catch (error) {
+      console.error('Error fetching members:', error);
+      showErrorToast('Error', 'Failed to load members');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (showModal) {
@@ -27,89 +56,25 @@ const MemberRecords = () => {
     email: '',
     phone: '',
     address: '',
-    dateOfBirth: '',
-    baptismDate: '',
-    confirmationDate: '',
+    date_joined: '',
     ministry: '',
     status: 'Active'
   });
 
-  const members = [
-    { 
-      id: 1, 
-      name: 'John Dela Cruz', 
-      email: 'john.dc@email.com', 
-      phone: '+63 912 345 6789',
-      address: '123 Main St, Manila',
-      dateOfBirth: '1985-05-15',
-      baptismDate: '1985-06-20',
-      confirmationDate: '1997-04-10',
-      ministry: 'Choir',
-      status: 'Active',
-      joinedDate: '2020-01-15'
-    },
-    { 
-      id: 2, 
-      name: 'Maria Santos', 
-      email: 'maria.s@email.com', 
-      phone: '+63 917 234 5678',
-      address: '456 Church Ave, Quezon City',
-      dateOfBirth: '1990-08-22',
-      baptismDate: '1990-09-15',
-      confirmationDate: '2002-05-18',
-      ministry: 'Youth Ministry',
-      status: 'Active',
-      joinedDate: '2019-03-10'
-    },
-    { 
-      id: 3, 
-      name: 'Pedro Reyes', 
-      email: 'pedro.r@email.com', 
-      phone: '+63 918 345 6789',
-      address: '789 Parish Rd, Makati',
-      dateOfBirth: '1978-12-05',
-      baptismDate: '1979-01-10',
-      confirmationDate: '1990-06-22',
-      ministry: 'Lector',
-      status: 'Active',
-      joinedDate: '2018-07-20'
-    },
-    { 
-      id: 4, 
-      name: 'Ana Garcia', 
-      email: 'ana.g@email.com', 
-      phone: '+63 919 456 7890',
-      address: '321 Chapel St, Pasig',
-      dateOfBirth: '1995-03-18',
-      baptismDate: '1995-04-25',
-      confirmationDate: '2007-07-14',
-      ministry: 'Altar Server',
-      status: 'Active',
-      joinedDate: '2021-02-05'
-    },
-    { 
-      id: 5, 
-      name: 'Carlos Mendoza', 
-      email: 'carlos.m@email.com', 
-      phone: '+63 920 567 8901',
-      address: '654 Faith Blvd, Taguig',
-      dateOfBirth: '1982-11-30',
-      baptismDate: '1983-01-08',
-      confirmationDate: '1994-08-20',
-      ministry: 'Eucharistic Minister',
-      status: 'Inactive',
-      joinedDate: '2017-09-12'
-    },
-  ];
-
   const ministries = ['Choir', 'Youth Ministry', 'Lector', 'Altar Server', 'Eucharistic Minister', 'Usher', 'Finance Committee'];
 
   const filteredMembers = members.filter(member => {
-    const matchesSearch = member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         member.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = (member.name || member.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (member.email || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filterStatus === 'all' || member.status === filterStatus;
     return matchesSearch && matchesFilter;
   });
+  
+  // Pagination logic
+  const totalPages = Math.ceil(filteredMembers.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentMembers = filteredMembers.slice(startIndex, endIndex);
 
   const handleOpenModal = (mode, member = null) => {
     setModalMode(mode);
@@ -123,9 +88,7 @@ const MemberRecords = () => {
         email: '',
         phone: '',
         address: '',
-        dateOfBirth: '',
-        baptismDate: '',
-        confirmationDate: '',
+        date_joined: '',
         ministry: '',
         status: 'Active'
       });
@@ -133,195 +96,271 @@ const MemberRecords = () => {
     setShowModal(true);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Form submitted:', formData);
-    setShowModal(false);
+    try {
+      if (modalMode === 'add') {
+        await memberAPI.create(formData);
+        showSuccessToast('Success', 'Member added successfully');
+      } else {
+        await memberAPI.update(selectedMember.id, formData);
+        showSuccessToast('Success', 'Member updated successfully');
+      }
+      await fetchMembers(); // Refresh the list
+      setShowModal(false);
+    } catch (error) {
+      console.error('Error saving member:', error);
+      showErrorToast('Error', 'Failed to save member');
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-gray-100 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-white">
+      <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Member Records</h1>
-            <p className="text-blue-900 mt-1">Manage church membership database</p>
+        <div className="px-6 py-5 border-b border-gray-200 bg-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold mb-1" style={{ color: '#4158D0' }}>Member Records</h1>
+              <p className="text-gray-600 text-sm">Manage church membership database</p>
+            </div>
+            <button 
+              onClick={() => handleOpenModal('add')}
+              className="px-6 py-3 text-white rounded-lg font-semibold hover:opacity-90 transition-all flex items-center gap-2 shadow-lg"
+              style={{ 
+                background: 'linear-gradient(135deg, #4158D0 0%, #2563eb 100%)',
+                boxShadow: '0 4px 12px rgba(65, 88, 208, 0.3)'
+              }}
+            >
+              <UserPlus size={20} />
+              Add Member
+            </button>
           </div>
-          <button 
-            onClick={() => handleOpenModal('add')}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-br from-black via-[#0A1628] to-[#1E3A8A] text-white rounded-xl hover:from-[#1E3A8A] hover:to-blue-700 transition-all shadow-lg hover:shadow-blue-900/50"
-          >
-            <UserPlus size={20} />
-            Add New Member
-          </button>
         </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-blue-200/50">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-blue-900 text-sm">Total Members</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{members.length}</p>
+          <div className="bg-white rounded-lg p-5 shadow hover:shadow-lg transition-all border border-gray-200 cursor-pointer group">
+            <div className="flex items-start justify-between mb-3">
+              <div className="p-3 rounded-lg group-hover:scale-110 transition-transform" style={{ backgroundColor: '#4158D020' }}>
+                <Users style={{ color: '#4158D0' }} size={24} />
               </div>
-              <div className="p-3 bg-gradient-to-br from-black via-[#0A1628] to-[#1E3A8A] rounded-xl">
-                <Users className="text-white" size={24} />
-              </div>
+              <Users size={16} className="text-gray-400" />
             </div>
+            <h3 className="text-3xl font-bold text-gray-900 mb-1">{members.length}</h3>
+            <p className="text-sm font-semibold text-gray-700">Total Members</p>
           </div>
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-blue-200/50">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-blue-900 text-sm">Active Members</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{members.filter(m => m.status === 'Active').length}</p>
+          <div className="bg-white rounded-lg p-5 shadow hover:shadow-lg transition-all border border-gray-200 cursor-pointer group">
+            <div className="flex items-start justify-between mb-3">
+              <div className="p-3 rounded-lg group-hover:scale-110 transition-transform" style={{ backgroundColor: '#10b98120' }}>
+                <Users style={{ color: '#10b981' }} size={24} />
               </div>
-              <div className="p-3 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl">
-                <Users className="text-white" size={24} />
-              </div>
+              <Users size={16} className="text-gray-400" />
             </div>
+            <h3 className="text-3xl font-bold text-gray-900 mb-1">{members.filter(m => m.status === 'Active').length}</h3>
+            <p className="text-sm font-semibold text-gray-700">Active Members</p>
           </div>
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-blue-200/50">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-blue-900 text-sm">Inactive Members</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{members.filter(m => m.status === 'Inactive').length}</p>
+          <div className="bg-white rounded-lg p-5 shadow hover:shadow-lg transition-all border border-gray-200 cursor-pointer group">
+            <div className="flex items-start justify-between mb-3">
+              <div className="p-3 rounded-lg group-hover:scale-110 transition-transform" style={{ backgroundColor: '#f59e0b20' }}>
+                <Users style={{ color: '#f59e0b' }} size={24} />
               </div>
-              <div className="p-3 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl">
-                <Users className="text-white" size={24} />
-              </div>
+              <Users size={16} className="text-gray-400" />
             </div>
+            <h3 className="text-3xl font-bold text-gray-900 mb-1">{members.filter(m => m.status === 'Inactive').length}</h3>
+            <p className="text-sm font-semibold text-gray-700">Inactive Members</p>
           </div>
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-blue-200/50">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-blue-900 text-sm">Ministries</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{ministries.length}</p>
+          <div className="bg-white rounded-lg p-5 shadow hover:shadow-lg transition-all border border-gray-200 cursor-pointer group">
+            <div className="flex items-start justify-between mb-3">
+              <div className="p-3 rounded-lg group-hover:scale-110 transition-transform" style={{ backgroundColor: '#8b5cf620' }}>
+                <Users style={{ color: '#8b5cf6' }} size={24} />
               </div>
-              <div className="p-3 bg-gradient-to-br from-black via-[#0A1628] to-[#1E3A8A] rounded-xl">
-                <Users className="text-white" size={24} />
-              </div>
+              <Users size={16} className="text-gray-400" />
             </div>
+            <h3 className="text-3xl font-bold text-gray-900 mb-1">{ministries.length}</h3>
+            <p className="text-sm font-semibold text-gray-700">Ministries</p>
           </div>
         </div>
 
         {/* Filters and Search */}
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-blue-200/50">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-              <input
-                type="text"
-                placeholder="Search by name or email..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+        <div className="bg-white rounded-lg p-5 shadow border border-gray-200">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                  type="text"
+                  placeholder="Search by name or email..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                />
+              </div>
             </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setFilterStatus('all')}
-                className={`px-4 py-2 rounded-lg transition-all ${filterStatus === 'all' ? 'bg-gradient-to-br from-black via-[#0A1628] to-[#1E3A8A] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-              >
-                All
-              </button>
-              <button
-                onClick={() => setFilterStatus('Active')}
-                className={`px-4 py-2 rounded-lg transition-all ${filterStatus === 'Active' ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-              >
-                Active
-              </button>
-              <button
-                onClick={() => setFilterStatus('Inactive')}
-                className={`px-4 py-2 rounded-lg transition-all ${filterStatus === 'Inactive' ? 'bg-gradient-to-br from-amber-500 to-amber-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-              >
-                Inactive
-              </button>
-              <button className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 flex items-center gap-2">
-                <Download size={18} />
-                Export
-              </button>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Status Filter</label>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setFilterStatus('all')}
+                  className="flex-1 px-3 py-2 rounded-lg transition-all text-sm font-medium"
+                  style={filterStatus === 'all' ? {
+                    background: 'linear-gradient(135deg, #4158D0 0%, #2563eb 100%)',
+                    color: 'white'
+                  } : {
+                    background: '#f3f4f6',
+                    color: '#374151'
+                  }}
+                >
+                  All
+                </button>
+                <button
+                  onClick={() => setFilterStatus('Active')}
+                  className="flex-1 px-3 py-2 rounded-lg transition-all text-sm font-medium"
+                  style={filterStatus === 'Active' ? {
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    color: 'white'
+                  } : {
+                    background: '#f3f4f6',
+                    color: '#374151'
+                  }}
+                >
+                  Active
+                </button>
+                <button
+                  onClick={() => setFilterStatus('Inactive')}
+                  className="flex-1 px-3 py-2 rounded-lg transition-all text-sm font-medium"
+                  style={filterStatus === 'Inactive' ? {
+                    background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                    color: 'white'
+                  } : {
+                    background: '#f3f4f6',
+                    color: '#374151'
+                  }}
+                >
+                  Inactive
+                </button>
+              </div>
             </div>
+          </div>
+          <div className="flex justify-end">
+            <button className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 flex items-center gap-2 text-sm font-medium transition-colors">
+              <Download size={18} />
+              Export
+            </button>
           </div>
         </div>
 
         {/* Members Table */}
-        <div className="bg-white rounded-xl shadow-sm border border-blue-200/50 overflow-hidden">
+        <div className="bg-white border border-gray-200 rounded-lg shadow overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gradient-to-r from-slate-50 to-gray-50 border-b border-gray-200">
+              <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Member</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Contact</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Ministry</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Joined</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Actions</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Member</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Contact</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Ministry</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Joined</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
-                {filteredMembers.map((member) => (
-                  <tr key={member.id} className="hover:bg-blue-50/50 transition-colors">
-                    <td className="px-6 py-4">
+              <tbody className="divide-y divide-gray-100">
+                {loading ? (
+                  <tr>
+                    <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
+                      Loading members...
+                    </td>
+                  </tr>
+                ) : filteredMembers.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
+                      No members found
+                    </td>
+                  </tr>
+                ) : (
+                  currentMembers.map((member) => (
+                  <tr key={member.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-3">
                       <div>
-                        <p className="font-semibold text-gray-900">{member.name}</p>
-                        <p className="text-sm text-gray-600">{member.email}</p>
+                        <p className="text-sm font-medium text-gray-900">{member.name || member.full_name}</p>
+                        <p className="text-xs text-gray-600">{member.email}</p>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-3">
                       <div className="space-y-1">
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <div className="flex items-center gap-2 text-xs text-gray-600">
                           <Phone size={14} />
-                          {member.phone}
+                          {member.phone || member.contact_number || 'N/A'}
                         </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <div className="flex items-center gap-2 text-xs text-gray-600">
                           <MapPin size={14} />
-                          {member.address}
+                          {member.address || 'N/A'}
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-900">
-                        {member.ministry}
+                    <td className="px-4 py-3">
+                      <span className="px-2 py-1 text-xs font-medium rounded bg-purple-100 text-purple-800">
+                        {member.ministry || 'N/A'}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 text-xs font-medium rounded ${
                         member.status === 'Active' 
-                          ? 'bg-emerald-100 text-emerald-900' 
-                          : 'bg-amber-100 text-amber-900'
+                          ? 'bg-emerald-100 text-emerald-800' 
+                          : 'bg-amber-100 text-amber-800'
                       }`}>
                         {member.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2 text-xs text-gray-600">
                         <Calendar size={14} />
-                        {member.joinedDate}
+                        {member.joinedDate || member.joined_date || member.created_at?.split('T')[0] || 'N/A'}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1">
                         <button 
                           onClick={() => handleOpenModal('view', member)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+                          style={{ color: '#4158D0' }}
                         >
-                          <Eye size={18} />
+                          <Eye size={16} />
                         </button>
                         <button 
                           onClick={() => handleOpenModal('edit', member)}
-                          className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                          className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+                          style={{ color: '#4158D0' }}
                         >
-                          <Edit size={18} />
+                          <Edit size={16} />
                         </button>
                       </div>
                     </td>
                   </tr>
-                ))}
+                )))}
               </tbody>
             </table>
           </div>
+          
+          {filteredMembers.length === 0 && !loading && (
+            <div className="text-center py-12 text-gray-500">
+              <Users size={48} className="mx-auto mb-4 text-gray-300" />
+              <p>No members found</p>
+            </div>
+          )}
         </div>
+        
+        {/* Pagination */}
+        {currentMembers.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalItems={filteredMembers.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={setItemsPerPage}
+          />
+        )}
       </div>
 
       {/* Modal */}
@@ -444,30 +483,13 @@ const MemberRecords = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Date of Birth</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Date Joined *</label>
                     <input
                       type="date"
-                      value={formData.dateOfBirth}
-                      onChange={(e) => setFormData({...formData, dateOfBirth: e.target.value})}
+                      value={formData.date_joined}
+                      onChange={(e) => setFormData({...formData, date_joined: e.target.value})}
                       className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Baptism Date</label>
-                    <input
-                      type="date"
-                      value={formData.baptismDate}
-                      onChange={(e) => setFormData({...formData, baptismDate: e.target.value})}
-                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Confirmation Date</label>
-                    <input
-                      type="date"
-                      value={formData.confirmationDate}
-                      onChange={(e) => setFormData({...formData, confirmationDate: e.target.value})}
-                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
                     />
                   </div>
                   <div>
@@ -506,7 +528,8 @@ const MemberRecords = () => {
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-2 bg-gradient-to-br from-black via-[#0A1628] to-[#1E3A8A] text-white rounded-lg hover:from-[#1E3A8A] hover:to-blue-700 transition-all shadow-lg hover:shadow-blue-900/50"
+                    className="px-6 py-2 text-white rounded-lg hover:opacity-90 transition-all shadow-lg"
+                    style={{ backgroundColor: '#4158D0' }}
                   >
                     {modalMode === 'add' ? 'Add Member' : 'Save Changes'}
                   </button>

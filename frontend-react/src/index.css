@@ -4,6 +4,33 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  /* Custom Color Scheme */
+  :root {
+    --color-bg-very-light: #E8E9F5;
+    --color-primary-blue: #4667CF;
+    --color-white-panel: #FAFAFB;
+    --color-soft-light-blue: #879BDA;
+    --color-light-grey-blue: #D9DBEF;
+    --color-muted-soft-blue: #BEC4E0;
+  }
+  
+  /* Override default white backgrounds to use custom white panel color */
+  .bg-white {
+    background-color: var(--color-white-panel) !important;
+  }
+  
+  /* Override default gray-50 backgrounds */
+  .bg-gray-50 {
+    background-color: var(--color-bg-very-light) !important;
+  }
+  
+  /* Override default gray-100 backgrounds */
+  .bg-gray-100 {
+    background-color: var(--color-light-grey-blue) !important;
+  }
+}
+
 @layer utilities {
   /* Animation Keyframes */
   @keyframes blob {
@@ -77,6 +104,68 @@
     }
   }
 
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-20px);
+    }
+  }
+
+  @keyframes floatDelayed {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-30px);
+    }
+  }
+
+  @keyframes floatYear {
+    0%, 100% {
+      transform: translateY(0px) rotate(0deg);
+    }
+    25% {
+      transform: translateY(-15px) rotate(2deg);
+    }
+    50% {
+      transform: translateY(-30px) rotate(0deg);
+    }
+    75% {
+      transform: translateY(-15px) rotate(-2deg);
+    }
+  }
+
+  @keyframes pulseSlow {
+    0%, 100% {
+      opacity: 0.5;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.8;
+      transform: scale(1.05);
+    }
+  }
+
+  @keyframes bounceSlow {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+
+  @keyframes spinSlow {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
   /* Animation Classes */
   .animate-blob {
     animation: blob 7s infinite;
@@ -113,6 +202,31 @@
 
   .animate-scale-in {
     animation: scaleIn 0.3s ease-out;
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  .animate-float-delayed {
+    animation: floatDelayed 8s ease-in-out infinite;
+    animation-delay: 1s;
+  }
+
+  .animate-float-year {
+    animation: floatYear 10s ease-in-out infinite;
+  }
+
+  .animate-pulse-slow {
+    animation: pulseSlow 4s ease-in-out infinite;
+  }
+
+  .animate-bounce-slow {
+    animation: bounceSlow 3s ease-in-out infinite;
+  }
+
+  .animate-spin-slow {
+    animation: spinSlow 20s linear infinite;
   }
 
   /* Animation Delays */
@@ -155,6 +269,10 @@
     min-height: 100vh;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  #root {
+    min-height: 100vh;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -312,5 +430,74 @@
 
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+}
+
+/* Print Styles - Hide sidebar and navigation */
+@media print {
+  /* Hide sidebar */
+  #app-sidebar,
+  aside,
+  nav {
+    display: none !important;
+  }
+
+  /* Hide header navigation */
+  header {
+    display: none !important;
+  }
+
+  /* Reset margins for print */
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Full width for main content */
+  main,
+  .main-content {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Optimize receipt for printing */
+  .min-h-screen {
+    min-height: auto !important;
+  }
+
+  /* Remove background colors for better print quality */
+  * {
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Keep specific backgrounds for receipt styling */
+  .bg-gray-50,
+  .bg-blue-50,
+  .bg-gradient-to-br {
+    background: #f9fafb !important;
+  }
+
+  /* Ensure borders are visible */
+  .border,
+  .border-t,
+  .border-b,
+  .border-l,
+  .border-r {
+    border-color: #d1d5db !important;
+  }
+
+  /* Page break control */
+  .print\\:page-break-after {
+    page-break-after: always;
+  }
+
+  .print\\:page-break-before {
+    page-break-before: always;
+  }
+
+  .print\\:no-page-break {
+    page-break-inside: avoid;
   }
 }

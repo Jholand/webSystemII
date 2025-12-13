@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Upload, File, FileText, Download, Trash2, Eye, Search, Filter } from 'lucide-react';
 import ModalOverlay from '../../components/ModalOverlay';
+import { showDeleteConfirm, showSuccessToast, showErrorToast, showInfoToast } from '../../utils/sweetAlertHelper';
 
 const UploadFiles = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -107,7 +108,7 @@ const UploadFiles = () => {
     e.preventDefault();
     
     if (!uploadForm.file) {
-      alert('Please select a file to upload');
+      showErrorToast('Error!', 'Please select a file to upload');
       return;
     }
 
@@ -131,16 +132,18 @@ const UploadFiles = () => {
     });
   };
 
-  const handleDeleteFile = (id) => {
+  const handleDeleteFile = async (id) => {
     const file = files.find(f => f.id === id);
-    if (window.confirm(`Are you sure you want to delete "${file.fileName}"?`)) {
+    const result = await showDeleteConfirm('Delete File?', `Are you sure you want to delete "${file.fileName}"?`);
+    if (result.isConfirmed) {
       setFiles(files.filter(f => f.id !== id));
+      showSuccessToast('Deleted!', 'File has been deleted successfully');
     }
   };
 
   const handleDownload = (file) => {
     // Simulate download
-    alert(`Downloading: ${file.fileName}`);
+    showInfoToast('Downloading', `Downloading: ${file.fileName}`);
   };
 
   const filteredFiles = files.filter(file => {
@@ -171,63 +174,69 @@ const UploadFiles = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-slate-50 dark:from-gray-900 dark:via-blue-950 dark:to-gray-900 p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-white">
+      <div className="space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center mb-6 animate-fade-in-down">
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Files</h1>
-            <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">Upload and manage documents</p>
+            <h1 className="text-2xl font-semibold" style={{ color: '#4158D0' }}>Files</h1>
+            <p className="text-gray-600 text-sm mt-1">Upload and manage documents</p>
           </div>
           <button
             onClick={() => setShowUploadModal(true)}
-            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-black via-[#0A1628] to-[#1E3A8A] text-white rounded-lg hover:shadow-lg hover:shadow-blue-900/50 transition-all duration-300 hover:-translate-y-0.5 font-semibold"
+            className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 transition-all"
+            style={{ backgroundColor: '#4158D0' }}
           >
-            <Upload size={20} />
+            <Upload size={16} className="inline mr-1.5" />
             Upload File
           </button>
         </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
-        {stats.map((stat, index) => (
-          <div 
-            key={index} 
-            className="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-sm hover:shadow-xl hover:shadow-cyan-500/20 transition-all duration-300 border border-white/60 hover:border-cyan-200/60 ring-1 ring-gray-100/50 hover:ring-cyan-100 hover:-translate-y-1 animate-fade-in-up"
-            style={{ animationDelay: `${index * 100}ms` }}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">{stat.label}</p>
-                <p className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-cyan-900 bg-clip-text text-transparent mt-2">{stat.value}</p>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {stats.map((stat, index) => {
+          const Icon = stat.icon;
+          
+          return (
+            <div 
+              key={index} 
+              className="bg-white rounded-lg p-5 shadow hover:shadow-md transition-shadow border border-gray-200"
+            >
+              <div className="flex items-start justify-between mb-3">
+                <div className="p-2.5 rounded-lg" style={{ backgroundColor: '#4158D0' }}>
+                  <Icon size={20} className="text-white" />
+                </div>
               </div>
-              <div className="p-3 rounded-lg bg-blue-50">
-                <stat.icon className="text-blue-600" size={24} />
+              <div>
+                <p className="text-gray-600 text-xs font-medium mb-1">{stat.label}</p>
+                <p className="text-3xl font-bold text-gray-900 mb-2">{stat.value}</p>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Filters and Search */}
-      <div className="bg-white rounded-xl shadow-sm p-6 mb-8 border border-slate-200">
-        <div className="flex flex-col md:flex-row gap-5">
+      <div className="bg-white border border-gray-200 rounded-lg p-5 shadow">
+        <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
             <input
               type="text"
               placeholder="Search by file name, record ID, or uploader..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:outline-none text-sm"
+              style={{ borderColor: '#D9DBEF', focusRing: '#4158D0' }}
             />
           </div>
           <div className="flex items-center gap-2">
-            <Filter size={20} className="text-slate-600" />
+            <Filter size={18} className="text-gray-600" />
             <select
               value={filterCategory}
               onChange={(e) => setFilterCategory(e.target.value)}
-              className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="px-4 py-2 text-sm border rounded-lg focus:ring-2 focus:outline-none"
+              style={{ borderColor: '#D9DBEF', color: '#4158D0' }}
             >
               <option value="all">All Categories</option>
               {categories.map(cat => (
@@ -239,26 +248,26 @@ const UploadFiles = () => {
       </div>
 
       {/* Files Table */}
-      <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden">
+      <div className="bg-white border border-gray-200 rounded-lg shadow overflow-hidden">
         <table className="w-full">
-          <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+          <thead className="border-b border-gray-200" style={{ backgroundColor: '#FAFAFB' }}>
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">File Name</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">Category</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">Record ID</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">Uploaded By</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">Upload Date</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">Size</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">Actions</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">File Name</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Category</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Record ID</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Uploaded By</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Upload Date</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Size</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+          <tbody className="divide-y divide-gray-100">
             {filteredFiles.map((file) => (
-              <tr key={file.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+              <tr key={file.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <FileText size={16} className="text-blue-600 dark:text-blue-400" />
-                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{file.fileName}</span>
+                    <FileText size={16} style={{ color: '#4158D0' }} />
+                    <span className="text-sm font-medium text-gray-900">{file.fileName}</span>
                   </div>
                 </td>
                 <td className="px-4 py-3">
@@ -266,28 +275,28 @@ const UploadFiles = () => {
                     {file.category}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{file.recordId}</td>
-                <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{file.uploadedBy}</td>
-                <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{file.uploadDate}</td>
-                <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{file.size}</td>
+                <td className="px-4 py-3 text-sm text-gray-600">{file.recordId}</td>
+                <td className="px-4 py-3 text-sm text-gray-600">{file.uploadedBy}</td>
+                <td className="px-4 py-3 text-sm text-gray-600">{file.uploadDate}</td>
+                <td className="px-4 py-3 text-sm text-gray-600">{file.size}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => handleDownload(file)}
-                      className="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                      className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
                       title="Download"
                     >
                       <Download size={16} />
                     </button>
                     <button
-                      className="p-1.5 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded transition-colors"
+                      className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
                       title="View"
                     >
                       <Eye size={16} />
                     </button>
                     <button
                       onClick={() => handleDeleteFile(file.id)}
-                      className="p-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                      className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
                       title="Delete"
                     >
                       <Trash2 size={16} />
@@ -299,7 +308,7 @@ const UploadFiles = () => {
           </tbody>
         </table>
         {filteredFiles.length === 0 && (
-          <div className="text-center py-12 text-slate-500">
+          <div className="text-center py-12 text-gray-500">
             No files found matching your criteria
           </div>
         )}
@@ -308,9 +317,9 @@ const UploadFiles = () => {
       {/* Upload Modal */}
       {showUploadModal && (
         <ModalOverlay isOpen={showUploadModal} onClose={() => setShowUploadModal(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl border-2 border-blue-500 ring-4 ring-blue-500/30 shadow-blue-500/50">
-            <div className="p-6 border-b border-slate-200">
-              <h2 className="text-2xl font-bold text-slate-900">Upload File</h2>
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl border border-gray-200">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-xl font-semibold" style={{ color: '#4158D0' }}>Upload File</h2>
             </div>
             
             <form onSubmit={handleUploadSubmit} className="p-6">
@@ -318,21 +327,24 @@ const UploadFiles = () => {
               <div
                 className={`border-2 border-dashed rounded-lg p-8 text-center mb-6 transition ${
                   dragActive 
-                    ? 'border-blue-500 bg-blue-50' 
-                    : 'border-slate-300 bg-slate-50'
+                    ? 'bg-blue-50' 
+                    : 'bg-gray-50'
                 }`}
+                style={{ borderColor: dragActive ? '#4158D0' : '#D9DBEF' }}
                 onDragEnter={handleDrag}
                 onDragLeave={handleDrag}
                 onDragOver={handleDrag}
                 onDrop={handleDrop}
               >
-                <Upload size={48} className={`mx-auto mb-4 ${dragActive ? 'text-blue-600' : 'text-slate-400'}`} />
-                <p className="text-lg font-medium text-slate-700 mb-2">
+                <Upload size={48} className={`mx-auto mb-4 ${dragActive ? 'text-blue-600' : 'text-gray-400'}`} />
+                <p className="text-lg font-medium text-gray-700 mb-2">
                   {uploadForm.file ? uploadForm.file.name : 'Drag and drop your file here'}
                 </p>
-                <p className="text-sm text-slate-500 mb-4">or</p>
+                <p className="text-sm text-gray-500 mb-4">or</p>
                 <label className="cursor-pointer">
-                  <span className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg hover:shadow-blue-500/50 inline-block">
+                  <span className="px-4 py-2 text-white rounded-lg hover:opacity-90 transition-all inline-block text-sm font-medium"
+                    style={{ backgroundColor: '#4158D0' }}
+                  >
                     Choose File
                   </span>
                   <input
@@ -342,20 +354,21 @@ const UploadFiles = () => {
                     accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                   />
                 </label>
-                <p className="text-xs text-slate-500 mt-2">
+                <p className="text-xs text-gray-500 mt-2">
                   Supported formats: PDF, DOC, DOCX, JPG, PNG (Max 10MB)
                 </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
                   <select
                     name="category"
                     value={uploadForm.category}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:outline-none"
+                    style={{ borderColor: '#D9DBEF' }}
                   >
                     {categories.map(cat => (
                       <option key={cat} value={cat}>{cat}</option>
@@ -363,25 +376,27 @@ const UploadFiles = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Record ID (Optional)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Record ID (Optional)</label>
                   <input
                     type="text"
                     name="recordId"
                     value={uploadForm.recordId}
                     onChange={handleInputChange}
                     placeholder="e.g., BR-001, MR-002"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:outline-none"
+                    style={{ borderColor: '#D9DBEF' }}
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Description (Optional)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Description (Optional)</label>
                   <textarea
                     name="description"
                     value={uploadForm.description}
                     onChange={handleInputChange}
                     rows="3"
                     placeholder="Add any notes or description about this file"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:outline-none"
+                    style={{ borderColor: '#D9DBEF' }}
                   />
                 </div>
               </div>
@@ -398,13 +413,14 @@ const UploadFiles = () => {
                       file: null,
                     });
                   }}
-                  className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg hover:shadow-blue-500/50"
+                  className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 transition-all"
+                  style={{ backgroundColor: '#4158D0' }}
                 >
                   Upload File
                 </button>

@@ -106,7 +106,7 @@ const PaymentsBilling = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -121,7 +121,7 @@ const PaymentsBilling = () => {
           {stats.map((stat, index) => (
             <div key={index} className="bg-white rounded-lg p-4 shadow hover:shadow-md transition-shadow border border-gray-200">
               <div className="flex items-start justify-between mb-3">
-                <div className="p-2 bg-gradient-to-br from-black via-[#0A1628] to-[#1E3A8A] rounded-lg">
+                <div className="p-2 rounded-lg" style={{ backgroundColor: '#4667CF' }}>
                   <stat.icon className="text-white" size={18} />
                 </div>
               </div>
@@ -340,18 +340,7 @@ const PaymentsBilling = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="border-2 border-gray-200 rounded-lg p-4 hover:border-blue-500 transition-all cursor-pointer">
               <div className="flex items-center gap-3">
-                <div className="p-3 bg-gradient-to-br from-black via-[#0A1628] to-[#1E3A8A] rounded-lg">
-                  <CreditCard className="text-white" size={24} />
-                </div>
-                <div>
-                  <h4 className="font-semibold text-gray-900">GCash</h4>
-                  <p className="text-sm text-gray-600">Mobile wallet</p>
-                </div>
-              </div>
-            </div>
-            <div className="border-2 border-gray-200 rounded-lg p-4 hover:border-blue-500 transition-all cursor-pointer">
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-gradient-to-br from-black via-[#0A1628] to-[#1E3A8A] rounded-lg">
+                <div className="p-3 rounded-lg" style={{ backgroundColor: '#4667CF' }}>
                   <CreditCard className="text-white" size={24} />
                 </div>
                 <div>
@@ -362,7 +351,18 @@ const PaymentsBilling = () => {
             </div>
             <div className="border-2 border-gray-200 rounded-lg p-4 hover:border-blue-500 transition-all cursor-pointer">
               <div className="flex items-center gap-3">
-                <div className="p-3 bg-gradient-to-br from-black via-[#0A1628] to-[#1E3A8A] rounded-lg">
+                <div className="p-3 rounded-lg" style={{ backgroundColor: '#4667CF' }}>
+                  <CreditCard className="text-white" size={24} />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-gray-900">PayMaya</h4>
+                  <p className="text-sm text-gray-600">Mobile wallet</p>
+                </div>
+              </div>
+            </div>
+            <div className="border-2 border-gray-200 rounded-lg p-4 hover:border-blue-500 transition-all cursor-pointer">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-lg" style={{ backgroundColor: '#4667CF' }}>
                   <DollarSign className="text-white" size={24} />
                 </div>
                 <div>

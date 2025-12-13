@@ -4,8 +4,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use App\Models\Schedule;
-use App\Models\Priest;
+use Illuminate\Support\Facades\DB;
 
 class ScheduleSeeder extends Seeder
 {
@@ -14,7 +13,13 @@ class ScheduleSeeder extends Seeder
      */
     public function run(): void
     {
-        $priests = Priest::all();
+        // Check if schedules already exist
+        if (DB::table('schedules')->count() > 0) {
+            $this->command->info('Schedules already exist. Skipping schedule seeding.');
+            return;
+        }
+
+        $priests = DB::table('priests')->get();
         
         if ($priests->isEmpty()) {
             $this->command->info('No priests found. Please run MemberSeeder first.');
@@ -32,7 +37,9 @@ class ScheduleSeeder extends Seeder
                 'priest_id' => $priests->first()->id,
                 'description' => 'Weekly Sunday morning mass',
                 'attendees' => 450,
-                'status' => 'scheduled'
+                'status' => 'scheduled',
+                'created_at' => now(),
+                'updated_at' => now(),
             ],
             [
                 'title' => 'Wedding Ceremony',
@@ -44,7 +51,9 @@ class ScheduleSeeder extends Seeder
                 'priest_id' => $priests->first()->id,
                 'description' => 'Wedding of John and Mary',
                 'attendees' => 200,
-                'status' => 'scheduled'
+                'status' => 'scheduled',
+                'created_at' => now(),
+                'updated_at' => now(),
             ],
             [
                 'title' => 'Baptism Ceremony',
@@ -56,7 +65,9 @@ class ScheduleSeeder extends Seeder
                 'priest_id' => $priests->count() > 1 ? $priests->skip(1)->first()->id : $priests->first()->id,
                 'description' => 'Baptism of several children',
                 'attendees' => 50,
-                'status' => 'scheduled'
+                'status' => 'scheduled',
+                'created_at' => now(),
+                'updated_at' => now(),
             ],
             [
                 'title' => 'Evening Mass',
@@ -68,7 +79,9 @@ class ScheduleSeeder extends Seeder
                 'priest_id' => $priests->first()->id,
                 'description' => 'Evening prayer mass',
                 'attendees' => 180,
-                'status' => 'scheduled'
+                'status' => 'scheduled',
+                'created_at' => now(),
+                'updated_at' => now(),
             ],
             [
                 'title' => 'Youth Ministry Meeting',
@@ -80,7 +93,9 @@ class ScheduleSeeder extends Seeder
                 'priest_id' => null,
                 'description' => 'Monthly youth gathering',
                 'attendees' => 45,
-                'status' => 'scheduled'
+                'status' => 'scheduled',
+                'created_at' => now(),
+                'updated_at' => now(),
             ],
             [
                 'title' => 'Christmas Mass',
@@ -92,14 +107,12 @@ class ScheduleSeeder extends Seeder
                 'priest_id' => $priests->first()->id,
                 'description' => 'Christmas Day celebration',
                 'attendees' => 800,
-                'status' => 'scheduled'
+                'status' => 'scheduled',
+                'created_at' => now(),
+                'updated_at' => now(),
             ]
         ];
 
-        foreach ($schedules as $schedule) {
-            Schedule::create($schedule);
-        }
-
-        $this->command->info('Schedules seeded successfully!');
+        DB::table('schedules')->insert($schedules);
     }
 }

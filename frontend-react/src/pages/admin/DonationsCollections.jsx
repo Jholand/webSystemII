@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { Plus, Search, Edit, Trash2, Eye, Download, DollarSign, TrendingUp, Calendar, Filter, Printer, FileText } from 'lucide-react';
 import ModalOverlay from '../../components/ModalOverlay';
+import { useAuth } from '../../contexts/AuthContext';
+import { showErrorToast, showDeleteConfirm, showSuccessToast } from '../../utils/sweetAlertHelper';
 
 const DonationsCollections = () => {
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPeriod, setFilterPeriod] = useState('all');
   const [filterType, setFilterType] = useState('all');
@@ -10,6 +13,9 @@ const DonationsCollections = () => {
   const [modalMode, setModalMode] = useState('add');
   const [selectedDonation, setSelectedDonation] = useState(null);
   const [activeTab, setActiveTab] = useState('all');
+  
+  // Check if user is accountant
+  const isAccountant = user?.role === 'accountant';
 
   const [donations, setDonations] = useState([
     {
@@ -148,12 +154,12 @@ const DonationsCollections = () => {
     { 
       label: `Total (${filterPeriod === 'all' ? 'All Time' : filterPeriod.charAt(0).toUpperCase() + filterPeriod.slice(1)})`, 
       value: `₱${totalAmount.toLocaleString()}`, 
-      icon: DollarSign, 
+      icon: DollarSign,
       color: 'from-green-600 to-green-700' 
     },
     { 
       label: 'Total Donations', 
-      value: filteredDonations.length.toString(), 
+      value: validDonations.length.toString(), 
       icon: TrendingUp, 
       color: 'from-blue-600 to-blue-700' 
     },
@@ -161,7 +167,7 @@ const DonationsCollections = () => {
       label: 'Average Amount', 
       value: `₱${averageAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, 
       icon: Calendar, 
-      color: 'from-purple-600 to-purple-700' 
+      color: 'from-blue-600 to-blue-700' 
     },
   ];
 
@@ -171,6 +177,10 @@ const DonationsCollections = () => {
   };
 
   const handleAddDonation = () => {
+    if (!isAccountant) {
+      showErrorToast('Access Denied', 'Only accountants can encode donations');
+      return;
+    }
     setModalMode('add');
     setFormData({
       date: new Date().toISOString().split('T')[0],
@@ -186,6 +196,10 @@ const DonationsCollections = () => {
   };
 
   const handleEditDonation = (donation) => {
+    if (!isAccountant) {
+      showErrorToast('Access Denied', 'Only accountants can edit donations');
+      return;
+    }
     setModalMode('edit');
     setSelectedDonation(donation);
     setFormData({
@@ -201,8 +215,8 @@ const DonationsCollections = () => {
     setShowModal(true);
   };
 
-  const handlePrintRecord = (donation) => {
-    alert(`Printing record for donation #${donation.id}`);
+  const handlePrint = (donation) => {
+    showInfoToast('Printing', `Generating record for donation #${donation.id}`);
   };
 
   const handleViewDonation = (donation) => {
@@ -211,9 +225,15 @@ const DonationsCollections = () => {
     setShowModal(true);
   };
 
-  const handleDeleteDonation = (id) => {
-    if (window.confirm('Are you sure you want to delete this donation record?')) {
+  const handleDelete = async (id) => {
+    if (!isAccountant) {
+      showErrorToast('Access Denied', 'Only accountants can delete donations');
+      return;
+    }
+    const result = await showDeleteConfirm('Delete Donation Record?', 'This action cannot be undone!');
+    if (result.isConfirmed) {
       setDonations(donations.filter(d => d.id !== id));
+      showSuccessToast('Deleted!', 'Donation record has been deleted successfully');
     }
   };
 
@@ -240,7 +260,9 @@ const DonationsCollections = () => {
   // Calculate summaries by type
   const getSummaryByType = () => {
     const summary = { Tithes: 0, Offerings: 0, 'Building Fund': 0, 'Special Collection': 0 };
-    filteredDonations.forEach(donation => {
+    // Exclude voided donations from category summaries
+    const validDonations = filteredDonations.filter(d => !d.isVoided);
+    validDonations.forEach(donation => {
       if (summary.hasOwnProperty(donation.type)) {
         summary[donation.type] += donation.amount;
       }
@@ -251,82 +273,137 @@ const DonationsCollections = () => {
   const summaryByType = getSummaryByType();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-cyan-50 p-6">
-      <div className="max-w-[1600px] mx-auto">
+    <div className="min-h-screen bg-white">
+      <div className="space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 bg-clip-text text-transparent">Donations & Collections</h1>
-            <p className="text-gray-600 text-sm mt-1">Manage donation entries and collection summaries</p>
+        <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold" style={{ color: '#4158D0' }}>Donations & Collections</h1>
+              <p className="text-gray-600 mt-1">{isAccountant ? 'Manage donation entries and collection summaries' : 'View donation summaries and reports'}</p>
+            </div>
+            {isAccountant && (
+              <button
+                onClick={handleAddDonation}
+                className="flex items-center gap-2 px-5 py-3 text-white rounded-lg shadow-lg transition-all font-semibold hover:shadow-xl"
+                style={{ 
+                  background: 'linear-gradient(135deg, #4158D0 0%, #2563eb 100%)',
+                  boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)'
+                }}
+              >
+                <Plus size={20} />
+                Add Donation
+              </button>
+            )}
           </div>
-          <button
-            onClick={handleAddDonation}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-black via-[#0A1628] to-[#1E3A8A] text-white rounded-xl hover:shadow-xl transition-all font-semibold"
-          >
-            <Plus size={20} />
-            Add Donation
-          </button>
         </div>
 
+        {/* Info Banner for Non-Accountants */}
+        {!isAccountant && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-5">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 mt-0.5">
+                <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-blue-900 mb-1">View-Only Access</h3>
+                <p className="text-sm text-blue-700">
+                  You have read-only access to donation records. Only <strong>Accountants</strong> can add, edit, or delete donation entries. 
+                  You can view summaries, reports, and download data.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {stats.map((stat, index) => (
-            <div key={index} className="bg-white rounded-xl shadow-lg p-6 border border-blue-100">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 font-medium">{stat.label}</p>
-                  <p className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mt-2">{stat.value}</p>
-                </div>
-                <div className="p-3 rounded-xl bg-gradient-to-br from-black via-[#0A1628] to-[#1E3A8A]">
+            <div key={index} className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all border border-gray-200 group relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-50 to-transparent rounded-full transform translate-x-12 -translate-y-12 opacity-50"></div>
+              <div className="relative flex items-start justify-between mb-4">
+                <div className="p-3 rounded-xl shadow-lg transform group-hover:scale-110 transition-transform" style={{ 
+                  background: 'linear-gradient(135deg, #4158D0 0%, #2563eb 100%)',
+                  boxShadow: '0 4px 12px rgba(65, 88, 208, 0.3)'
+                }}>
                   <stat.icon className="text-white" size={24} />
                 </div>
+              </div>
+              <div className="relative">
+                <h3 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent mb-2">{stat.value}</h3>
+                <p className="text-sm font-medium text-gray-600">{stat.label}</p>
               </div>
             </div>
           ))}
         </div>
 
         {/* Collection Summary by Type */}
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border border-blue-100">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">Collection Summary by Type ({filterPeriod === 'all' ? 'All Time' : filterPeriod.charAt(0).toUpperCase() + filterPeriod.slice(1)})</h3>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-5 border border-blue-200">
-              <p className="text-sm text-blue-600 font-medium mb-2">Tithes</p>
-              <p className="text-2xl font-bold text-blue-900">₱{summaryByType.Tithes.toLocaleString()}</p>
+        <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
+          <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+            <FileText size={20} style={{ color: '#4158D0' }} />
+            Collection Summary by Type ({filterPeriod === 'all' ? 'All Time' : filterPeriod.charAt(0).toUpperCase() + filterPeriod.slice(1)})
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="bg-white rounded-xl p-6 border-2 border-blue-100 hover:border-blue-200 transition-all shadow-sm hover:shadow-md group">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 rounded-lg" style={{ background: 'rgba(65, 88, 208, 0.1)' }}>
+                  <DollarSign size={20} style={{ color: '#4158D0' }} />
+                </div>
+                <p className="text-sm font-semibold text-gray-700">Tithes</p>
+              </div>
+              <p className="text-2xl font-bold" style={{ color: '#4158D0' }}>₱{summaryByType.Tithes.toLocaleString()}</p>
             </div>
-            <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-5 border border-indigo-200">
-              <p className="text-sm text-indigo-600 font-medium mb-2">Offerings</p>
-              <p className="text-2xl font-bold text-indigo-900">₱{summaryByType.Offerings.toLocaleString()}</p>
+            <div className="bg-white rounded-xl p-6 border-2 border-green-100 hover:border-green-200 transition-all shadow-sm hover:shadow-md group">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 rounded-lg" style={{ background: 'rgba(16, 185, 129, 0.1)' }}>
+                  <DollarSign size={20} style={{ color: '#10b981' }} />
+                </div>
+                <p className="text-sm font-semibold text-gray-700">Offerings</p>
+              </div>
+              <p className="text-2xl font-bold" style={{ color: '#10b981' }}>₱{summaryByType.Offerings.toLocaleString()}</p>
             </div>
-            <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-xl p-5 border border-cyan-200">
-              <p className="text-sm text-cyan-600 font-medium mb-2">Building Fund</p>
-              <p className="text-2xl font-bold text-cyan-900">₱{summaryByType['Building Fund'].toLocaleString()}</p>
+            <div className="bg-white rounded-xl p-6 border-2 border-cyan-100 hover:border-cyan-200 transition-all shadow-sm hover:shadow-md group">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 rounded-lg" style={{ background: 'rgba(6, 182, 212, 0.1)' }}>
+                  <DollarSign size={20} style={{ color: '#06b6d4' }} />
+                </div>
+                <p className="text-sm font-semibold text-gray-700">Building Fund</p>
+              </div>
+              <p className="text-2xl font-bold" style={{ color: '#06b6d4' }}>₱{summaryByType['Building Fund'].toLocaleString()}</p>
             </div>
-            <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-5 border border-purple-200">
-              <p className="text-sm text-purple-600 font-medium mb-2">Special Collection</p>
-              <p className="text-2xl font-bold text-purple-900">₱{summaryByType['Special Collection'].toLocaleString()}</p>
+            <div className="bg-white rounded-xl p-6 border-2 border-orange-100 hover:border-orange-200 transition-all shadow-sm hover:shadow-md group">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 rounded-lg" style={{ background: 'rgba(245, 158, 11, 0.1)' }}>
+                  <DollarSign size={20} style={{ color: '#f59e0b' }} />
+                </div>
+                <p className="text-sm font-semibold text-gray-700">Special Collection</p>
+              </div>
+              <p className="text-2xl font-bold" style={{ color: '#f59e0b' }}>₱{summaryByType['Special Collection'].toLocaleString()}</p>
             </div>
           </div>
         </div>
 
         {/* Filters and Search */}
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border border-blue-100">
-          <div className="flex flex-col md:flex-row gap-5">
+        <div className="bg-white rounded-2xl shadow-lg p-5 border border-gray-200">
+          <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
               <input
                 type="text"
                 placeholder="Search by donor, type, or purpose..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm text-gray-900 placeholder:text-gray-400 transition-all"
               />
             </div>
             <div className="flex items-center gap-2">
-              <Filter size={20} className="text-gray-600" />
+              <Filter size={18} className="text-gray-600" />
               <select
                 value={filterPeriod}
                 onChange={(e) => setFilterPeriod(e.target.value)}
-                className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
+                className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-sm font-medium text-gray-700 transition-all"
               >
                 <option value="all">All Time</option>
                 <option value="daily">Daily</option>
@@ -336,7 +413,7 @@ const DonationsCollections = () => {
               <select
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value)}
-                className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
+                className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-sm text-gray-700 transition-all"
               >
                 <option value="all">All Types</option>
                 <option value="Tithes">Tithes</option>
@@ -349,18 +426,18 @@ const DonationsCollections = () => {
         </div>
 
         {/* Donations Table */}
-        <div className="bg-white rounded-xl shadow-lg border border-blue-100 overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
           <table className="w-full">
-            <thead className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200">
+            <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">Date/Time</th>
-                <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">Donor</th>
-                <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">Type</th>
-                <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">Amount</th>
-                <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">Method</th>
-                <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">Purpose</th>
-                <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">Recorded By</th>
-                <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">Actions</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Date/Time</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Donor</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Type</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Amount</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Method</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Purpose</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Recorded By</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -391,26 +468,37 @@ const DonationsCollections = () => {
                   <td className="px-4 py-3 whitespace-nowrap">
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => handlePrintRecord(donation)}
+                        onClick={() => handlePrint(donation)}
                         className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition-all"
                         title="Print Record"
                       >
                         <Printer size={16} />
                       </button>
                       <button
-                        onClick={() => handleEditDonation(donation)}
-                        className="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg transition-all"
-                        title="Edit"
+                        onClick={() => handleViewDonation(donation)}
+                        className="p-2 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-lg transition-all"
+                        title="View Details"
                       >
-                        <Edit size={16} />
+                        <Eye size={16} />
                       </button>
-                      <button
-                        onClick={() => handleDeleteDonation(donation.id)}
-                        className="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-all"
-                        title="Delete"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      {isAccountant && (
+                        <>
+                          <button
+                            onClick={() => handleEditDonation(donation)}
+                            className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition-all"
+                            title="Edit"
+                          >
+                            <Edit size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(donation.id)}
+                            className="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-all"
+                            title="Delete"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -542,7 +630,11 @@ const DonationsCollections = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-gradient-to-r from-black via-[#0A1628] to-[#1E3A8A] text-white rounded-lg hover:shadow-xl transition-all"
+                  className="px-6 py-2 text-white rounded-lg shadow-lg hover:shadow-xl transition-all"
+                  style={{ 
+                    background: 'linear-gradient(135deg, #4158D0 0%, #2563eb 100%)',
+                    boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)'
+                  }}
                 >
                   {modalMode === 'add' ? 'Add Donation' : 'Save Changes'}
                 </button>

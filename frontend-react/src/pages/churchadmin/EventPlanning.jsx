@@ -1,9 +1,22 @@
 import { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Calendar, Users, DollarSign, CheckCircle, Clock, MapPin, User, MessageSquare, X } from 'lucide-react';
 import ModalOverlay from '../../components/ModalOverlay';
+import Pagination from '../../components/Pagination';
+import { eventService } from '../../services/extendedChurchService';
+import { showSuccessToast, showErrorToast, showDeleteConfirm } from '../../utils/sweetAlertHelper';
 
 const EventPlanning = () => {
   const [showModal, setShowModal] = useState(false);
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(false);
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  useEffect(() => {
+    fetchEvents();
+  }, []);
 
   useEffect(() => {
     if (showModal) {
@@ -18,9 +31,24 @@ const EventPlanning = () => {
       if (sidebar) sidebar.style.display = '';
     }
   }, [showModal]);
+
+  const fetchEvents = async () => {
+    try {
+      setLoading(true);
+      const data = await eventService.getAll();
+      setEvents(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error fetching events:', error);
+      showErrorToast('Error', 'Failed to load events');
+      setEvents([]);
+    } finally {
+      setLoading(false);
+    }
+  };
   const [modalMode, setModalMode] = useState('add');
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [formData, setFormData] = useState({
+    eventId: '',
     title: '',
     type: '',
     date: '',
@@ -34,88 +62,7 @@ const EventPlanning = () => {
     status: 'Planning'
   });
 
-  const events = [
-    {
-      id: 1,
-      title: 'Christmas Celebration 2025',
-      type: 'Festival',
-      date: '2025-12-25',
-      time: '8:00 PM',
-      location: 'Main Church & Grounds',
-      budget: '₱150,000',
-      spent: '₱45,000',
-      coordinator: 'Maria Santos',
-      volunteers: 50,
-      status: 'Planning',
-      progress: 30,
-      tasks: [
-        { id: 1, task: 'Book decorations vendor', completed: true },
-        { id: 2, task: 'Arrange choir performance', completed: true },
-        { id: 3, task: 'Setup sound system', completed: false },
-        { id: 4, task: 'Coordinate volunteer schedule', completed: false },
-      ]
-    },
-    {
-      id: 2,
-      title: 'Youth Ministry Retreat',
-      type: 'Retreat',
-      date: '2025-12-10',
-      time: '9:00 AM',
-      location: 'Mountain View Retreat Center',
-      budget: '₱80,000',
-      spent: '₱65,000',
-      coordinator: 'John Dela Cruz',
-      volunteers: 15,
-      status: 'In Progress',
-      progress: 75,
-      tasks: [
-        { id: 1, task: 'Book retreat venue', completed: true },
-        { id: 2, task: 'Arrange transportation', completed: true },
-        { id: 3, task: 'Prepare activities', completed: true },
-        { id: 4, task: 'Finalize meal arrangements', completed: false },
-      ]
-    },
-    {
-      id: 3,
-      title: 'Parish Anniversary Celebration',
-      type: 'Celebration',
-      date: '2026-01-15',
-      time: '10:00 AM',
-      location: 'Parish Grounds',
-      budget: '₱200,000',
-      spent: '₱15,000',
-      coordinator: 'Fr. Joseph Smith',
-      volunteers: 75,
-      status: 'Planning',
-      progress: 15,
-      tasks: [
-        { id: 1, task: 'Form planning committee', completed: true },
-        { id: 2, task: 'Create event timeline', completed: false },
-        { id: 3, task: 'Source event suppliers', completed: false },
-        { id: 4, task: 'Design invitations', completed: false },
-      ]
-    },
-    {
-      id: 4,
-      title: 'Charity Outreach Program',
-      type: 'Outreach',
-      date: '2025-11-30',
-      time: '1:00 PM',
-      location: 'Community Center',
-      budget: '₱50,000',
-      spent: '₱48,000',
-      coordinator: 'Ana Garcia',
-      volunteers: 30,
-      status: 'Completed',
-      progress: 100,
-      tasks: [
-        { id: 1, task: 'Collect donations', completed: true },
-        { id: 2, task: 'Pack relief goods', completed: true },
-        { id: 3, task: 'Coordinate distribution', completed: true },
-        { id: 4, task: 'Document event', completed: true },
-      ]
-    },
-  ];
+
 
   const eventTypes = ['Festival', 'Retreat', 'Celebration', 'Conference', 'Outreach', 'Fundraiser', 'Seminar'];
   const statuses = ['Planning', 'In Progress', 'Completed', 'Cancelled'];
@@ -128,6 +75,7 @@ const EventPlanning = () => {
     } else {
       setSelectedEvent(null);
       setFormData({
+        eventId: '',
         title: '',
         type: '',
         date: '',
@@ -144,10 +92,39 @@ const EventPlanning = () => {
     setShowModal(true);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Form submitted:', formData);
-    setShowModal(false);
+    try {
+      setLoading(true);
+      if (modalMode === 'add') {
+        await eventService.create(formData);
+        showSuccessToast('Success!', 'Event created successfully');
+      } else if (modalMode === 'edit') {
+        await eventService.update(selectedEvent.id, formData);
+        showSuccessToast('Success!', 'Event updated successfully');
+      }
+      setShowModal(false);
+      await fetchEvents();
+    } catch (error) {
+      console.error('Error saving event:', error);
+      showErrorToast('Error', 'Failed to save event');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    const result = await showDeleteConfirm('Delete Event?', 'This action cannot be undone!');
+    if (result.isConfirmed) {
+      try {
+        await eventService.delete(id);
+        showSuccessToast('Deleted!', 'Event has been deleted successfully');
+        await fetchEvents();
+      } catch (error) {
+        console.error('Error deleting event:', error);
+        showErrorToast('Error', 'Failed to delete event');
+      }
+    }
   };
 
   const getStatusColor = (status) => {
@@ -160,88 +137,76 @@ const EventPlanning = () => {
     return colors[status] || colors.Planning;
   };
 
+  const stats = [
+    { label: 'Total Events', value: events.length, icon: Calendar, color: '#4158D0' },
+    { label: 'Planning', value: events.filter(e => e.status === 'Planning').length, icon: Clock, color: '#f59e0b' },
+    { label: 'In Progress', value: events.filter(e => e.status === 'In Progress').length, icon: Users, color: '#10b981' },
+    { label: 'Completed', value: events.filter(e => e.status === 'Completed').length, icon: CheckCircle, color: '#8b5cf6' }
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-gray-100 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-white">
+      <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Event Planning</h1>
-            <p className="text-blue-900 mt-1">Plan and manage church events</p>
+        <div className="px-6 py-5 border-b border-gray-200 bg-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold mb-1" style={{ color: '#4158D0' }}>Event Planning</h1>
+              <p className="text-gray-600 text-sm">Plan and manage church events</p>
+            </div>
+            <button 
+              onClick={() => handleOpenModal('add')}
+              className="flex items-center gap-2 px-6 py-3 text-white rounded-lg font-semibold hover:opacity-90 transition-all shadow-lg"
+              style={{ 
+                background: 'linear-gradient(135deg, #4158D0 0%, #2563eb 100%)',
+                boxShadow: '0 4px 12px rgba(65, 88, 208, 0.3)'
+              }}
+            >
+              <Plus size={18} />
+              Create Event
+            </button>
           </div>
-          <button 
-            onClick={() => handleOpenModal('add')}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-br from-black via-[#0A1628] to-[#1E3A8A] text-white rounded-xl hover:from-[#1E3A8A] hover:to-blue-700 transition-all shadow-lg hover:shadow-blue-900/50"
-          >
-            <Plus size={20} />
-            Create Event
-          </button>
         </div>
 
-        {/* Stats */}
+        {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-blue-200/50">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-blue-900 text-sm">Total Events</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{events.length}</p>
+          {stats.map((stat, index) => {
+            const IconComponent = stat.icon;
+            return (
+              <div key={index} className="bg-white rounded-lg p-5 shadow hover:shadow-lg transition-all border border-gray-200 cursor-pointer group">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="p-3 rounded-lg group-hover:scale-110 transition-transform" style={{ backgroundColor: stat.color + '20' }}>
+                    <IconComponent style={{ color: stat.color }} size={24} />
+                  </div>
+                  <IconComponent size={16} className="text-gray-400" />
+                </div>
+                <h3 className="text-3xl font-bold text-gray-900 mb-1">{stat.value}</h3>
+                <p className="text-sm font-semibold text-gray-700">{stat.label}</p>
               </div>
-              <div className="p-3 bg-gradient-to-br from-black via-[#0A1628] to-[#1E3A8A] rounded-xl">
-                <Calendar className="text-white" size={24} />
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-blue-200/50">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-blue-900 text-sm">In Progress</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{events.filter(e => e.status === 'In Progress').length}</p>
-              </div>
-              <div className="p-3 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl">
-                <Clock className="text-white" size={24} />
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-blue-200/50">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-blue-900 text-sm">Total Budget</p>
-                <p className="text-2xl font-bold text-gray-900 mt-2">₱480K</p>
-              </div>
-              <div className="p-3 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl">
-                <DollarSign className="text-white" size={24} />
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-blue-200/50">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-blue-900 text-sm">Volunteers</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">170</p>
-              </div>
-              <div className="p-3 bg-gradient-to-br from-black via-[#0A1628] to-[#1E3A8A] rounded-xl">
-                <Users className="text-white" size={24} />
-              </div>
-            </div>
-          </div>
+            );
+          })}
         </div>
 
         {/* Events List */}
         <div className="space-y-4">
           {events.map((event) => (
-            <div key={event.id} className="bg-white rounded-xl shadow-sm border border-blue-200/50 p-6">
+            <div key={event.id} className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all border border-gray-200 p-6">
+
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-xl font-bold text-gray-900">{event.title}</h3>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(event.status)}`}>
+                    <span className="text-xs font-mono font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-1.5 rounded-lg shadow-sm">
+                      🆔 {event.eventId}
+                    </span>
+                    <h3 className="text-lg font-bold text-gray-900">{event.title}</h3>
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(event.status)}`}>
                       {event.status}
                     </span>
-                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-900">
+                    <span className="px-2.5 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: 'rgba(70, 103, 207, 0.1)', color: '#4667CF' }}>
                       {event.type}
                     </span>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm text-gray-600">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs text-gray-600">
                     <div className="flex items-center gap-2">
                       <Calendar size={16} />
                       <span>{event.date} at {event.time}</span>
@@ -287,8 +252,8 @@ const EventPlanning = () => {
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div 
-                    className="bg-gradient-to-r from-black via-[#0A1628] to-[#1E3A8A] h-2 rounded-full transition-all"
-                    style={{ width: `${event.progress}%` }}
+                    className="h-2 rounded-full transition-all"
+                    style={{ width: `${event.progress}%`, backgroundColor: '#4667CF' }}
                   ></div>
                 </div>
               </div>
@@ -348,6 +313,12 @@ const EventPlanning = () => {
             {modalMode === 'view' ? (
               <div className="p-6 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="md:col-span-2">
+                    <label className="text-sm font-medium text-gray-700">Event ID</label>
+                    <p className="mt-1 text-lg font-mono font-bold text-blue-600 bg-blue-50 px-3 py-2 rounded-lg inline-block">
+                      🆔 {selectedEvent?.eventId}
+                    </p>
+                  </div>
                   <div>
                     <label className="text-sm font-medium text-gray-700">Event Title</label>
                     <p className="mt-1 text-gray-900">{selectedEvent?.title}</p>
@@ -435,7 +406,22 @@ const EventPlanning = () => {
             ) : (
               <form onSubmit={handleSubmit} className="p-6 space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="md:col-span-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Event ID * <span className="text-blue-600 font-normal">(Required for Payment Tracking)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.eventId}
+                      onChange={(e) => setFormData({...formData, eventId: e.target.value})}
+                      className="w-full px-4 py-2 border-2 border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
+                      placeholder="e.g., EVT-2025-001"
+                      required
+                    />
+                    <p className="text-xs text-gray-500 mt-1">💡 Use format: EVT-YYYY-###</p>
+                  </div>
+
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Event Title *</label>
                     <input
                       type="text"
@@ -551,7 +537,8 @@ const EventPlanning = () => {
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-2 bg-gradient-to-br from-black via-[#0A1628] to-[#1E3A8A] text-white rounded-lg hover:from-[#1E3A8A] hover:to-blue-700 transition-all shadow-lg hover:shadow-blue-900/50"
+                    className="px-6 py-2 text-white rounded-lg hover:opacity-90 transition-all shadow-lg"
+                    style={{ backgroundColor: '#4667CF' }}
                   >
                     {modalMode === 'add' ? 'Create Event' : 'Save Changes'}
                   </button>

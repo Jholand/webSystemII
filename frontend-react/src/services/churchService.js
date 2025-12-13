@@ -101,3 +101,67 @@ export const scheduleService = {
     return response.data;
   },
 };
+
+export const marriageRecordService = {
+  // Get all marriage records with optional filters
+  getAll: async (params = {}) => {
+    const response = await api.get('/marriage-records', { params });
+    return response.data;
+  },
+
+  // Get single marriage record
+  getById: async (id) => {
+    const response = await api.get(`/marriage-records/${id}`);
+    return response.data;
+  },
+
+  // Create new marriage record
+  create: async (recordData) => {
+    const response = await api.post('/marriage-records', recordData);
+    return response.data;
+  },
+
+  // Update marriage record
+  update: async (id, recordData) => {
+    const response = await api.put(`/marriage-records/${id}`, recordData);
+    return response.data;
+  },
+
+  // Delete marriage record
+  delete: async (id) => {
+    const response = await api.delete(`/marriage-records/${id}`);
+    return response.data;
+  },
+};
+
+export const baptismRecordService = {
+  // Get all baptism records with optional filters
+  getAll: async (params = {}) => {
+    const response = await api.get('/baptism-records', { params });
+    return response.data;
+  },
+
+  // Get single baptism record
+  getById: async (id) => {
+    const response = await api.get(`/baptism-records/${id}`);
+    return response.data;
+  },
+
+  // Create new baptism record
+  create: async (recordData) => {
+    const response = await api.post('/baptism-records', recordData);
+    return response.data;
+  },
+
+  // Update baptism record
+  update: async (id, recordData) => {
+    const response = await api.put(`/baptism-records/${id}`, recordData);
+    return response.data;
+  },
+
+  // Delete baptism record
+  delete: async (id) => {
+    const response = await api.delete(`/baptism-records/${id}`);
+    return response.data;
+  },
+};

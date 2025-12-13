@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Plus, Search, Filter, Eye, Edit, Trash2, CheckCircle, Clock, Printer, Download, CreditCard, DollarSign, Receipt } from 'lucide-react';
 import ModalOverlay from '../../components/ModalOverlay';
+import { showDeleteConfirm, showSuccessToast, showInfoToast } from '../../utils/sweetAlertHelper';
 
 const BillingCollections = () => {
   const [showModal, setShowModal] = useState(false);
@@ -104,9 +105,11 @@ const BillingCollections = () => {
     handleCloseModal();
   };
 
-  const handleDelete = (id) => {
-    if (window.confirm('Are you sure you want to delete this invoice?')) {
+  const handleDelete = async (id) => {
+    const result = await showDeleteConfirm('Delete Invoice?', 'Are you sure you want to delete this invoice?');
+    if (result.isConfirmed) {
       setInvoices(invoices.filter(inv => inv.id !== id));
+      showSuccessToast('Deleted!', 'Invoice has been deleted successfully');
     }
   };
 
@@ -133,7 +136,7 @@ const BillingCollections = () => {
   };
 
   const handlePrintReceipt = (invoice) => {
-    alert(`Printing receipt for ${invoice.invoiceNumber}...`);
+    showInfoToast('Printing', `Printing receipt for ${invoice.invoiceNumber}...`);
   };
 
   const getTotalAmount = () => invoices.reduce((sum, inv) => sum + inv.amount, 0);
@@ -153,7 +156,8 @@ const BillingCollections = () => {
           </div>
           <button
             onClick={() => handleOpenModal('add')}
-            className="px-5 py-2.5 bg-gradient-to-r from-black via-[#0A1628] to-[#1E3A8A] text-white rounded-lg hover:from-[#1E3A8A] hover:to-blue-700 transition-all shadow-md hover:shadow-lg font-semibold flex items-center gap-2"
+            className="px-5 py-2.5 text-white rounded-lg transition-opacity hover:opacity-90 shadow-md font-semibold flex items-center gap-2"
+            style={{ backgroundColor: '#4667CF' }}
           >
             <Plus size={18} />
             Create Invoice
@@ -168,7 +172,7 @@ const BillingCollections = () => {
                 <p className="text-sm text-blue-900 mb-1.5 font-medium">Total Invoiced</p>
                 <p className="text-2xl font-bold text-gray-900">₱{getTotalAmount().toLocaleString()}</p>
               </div>
-              <div className="p-2.5 bg-gradient-to-br from-black via-[#0A1628] to-[#1E3A8A] rounded-lg shadow-md">
+              <div className="p-2.5 rounded-lg shadow-md" style={{ backgroundColor: '#4667CF' }}>
                 <CreditCard className="text-white" size={22} />
               </div>
             </div>
@@ -417,7 +421,8 @@ const BillingCollections = () => {
               <div className="flex gap-3 pt-4">
                 <button
                   type="submit"
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-black via-[#0A1628] to-[#1E3A8A] text-white rounded-lg hover:shadow-xl transition-all font-semibold"
+                  className="flex-1 px-6 py-3 text-white rounded-lg hover:shadow-xl transition-all font-semibold"
+                  style={{ backgroundColor: '#4667CF' }}
                 >
                   {modalMode === 'add' ? 'Create Invoice' : 'Update Invoice'}
                 </button>

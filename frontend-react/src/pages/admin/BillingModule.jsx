@@ -115,9 +115,11 @@ const BillingModule = () => {
     setShowModal(true);
   };
 
-  const handleDeleteInvoice = (id) => {
-    if (window.confirm('Are you sure you want to delete this invoice?')) {
+  const handleDelete = async (id) => {
+    const result = await showDeleteConfirm('Delete Invoice?', 'This action cannot be undone!');
+    if (result.isConfirmed) {
       setInvoices(invoices.filter(inv => inv.id !== id));
+      showSuccessToast('Deleted!', 'Invoice has been deleted successfully');
     }
   };
 
@@ -136,7 +138,8 @@ const BillingModule = () => {
   };
 
   const handlePrintReceipt = (invoice) => {
-    alert(`Printing receipt for ${invoice.invoiceNumber}`);
+    showInfoToast('Printing', `Generating receipt for ${invoice.invoiceNumber}`);
+    // Add actual print logic here
   };
 
   const handleSubmit = (e) => {
@@ -309,7 +312,7 @@ const BillingModule = () => {
                         </button>
                         <button
                           onClick={() => handleEditInvoice(invoice)}
-                          className="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg transition-all"
+                          className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition-all"
                           title="Edit"
                         >
                           <Edit size={16} />
